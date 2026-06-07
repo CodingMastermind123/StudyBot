@@ -71,9 +71,26 @@ function PracticeForm({ onGenerate, onCancel }) {
   );
 }
 
+const SHOW_ANSWERS_PROMPT = "Show the answers to all the practice problems above.";
+
+// Returns true when the most recent assistant message contains the
+// "show answers" cue that the practice prompt appends.
+function awaitingAnswers(activeChat) {
+  if (!activeChat?.messages?.length) return false;
+  const msgs = activeChat.messages;
+  // Find the last assistant message
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === "assistant") {
+      return msgs[i].content.toLowerCase().includes("show answers");
+    }
+  }
+  return false;
+}
+
 export default function PromptChips({ activeChat, isLoading, onSend }) {
   const [showPracticeForm, setShowPracticeForm] = useState(false);
   const disabled = !activeChat || isLoading;
+  const showAnswersChip = !showPracticeForm && awaitingAnswers(activeChat);
 
   function handleChipClick(p) {
     if (p.id === PRACTICE_ID) {
@@ -102,6 +119,15 @@ export default function PromptChips({ activeChat, isLoading, onSend }) {
 
   return (
     <div className="prompt-chips">
+      {showAnswersChip && (
+        <button
+          className="chip chip-show-answers"
+          disabled={disabled}
+          onClick={() => onSend(SHOW_ANSWERS_PROMPT)}
+        >
+          Show Answers
+        </button>
+      )}
       {PROMPTS.map((p) => (
         <button
           key={p.id}

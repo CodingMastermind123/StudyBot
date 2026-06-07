@@ -490,6 +490,19 @@ pre {
   cursor: not-allowed;
 }
 
+/* ─── Show Answers chip (appears after practice questions are generated) ── */
+.chip.chip-show-answers {
+  background-color: var(--workspace-accent-dim);
+  border-color: var(--workspace-accent);
+  color: var(--workspace-accent);
+}
+
+.chip.chip-show-answers:hover:not(:disabled) {
+  background-color: var(--workspace-accent);
+  border-color: var(--workspace-accent);
+  color: #fff;
+}
+
 /* ─── Practice Problems inline form ─────────────────────────────────────── */
 .practice-form {
   display: flex;
