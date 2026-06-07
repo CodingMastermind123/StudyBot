@@ -1,16 +1,47 @@
 import { useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble.jsx";
 
-export default function ChatWindow({
-  activeWorkspace,
-  activeChat,
-  isLoading,
-}) {
+/* ── Inline SVG icons for empty states ─────────────────────────────────── */
+function BookIcon() {
+  return (
+    <svg className="empty-icon" width="52" height="52" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
+function UploadDocIcon() {
+  return (
+    <svg className="empty-icon" width="52" height="52" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="12" y1="18" x2="12" y2="12" />
+      <polyline points="9 15 12 12 15 15" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg className="empty-icon" width="52" height="52" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
   // Auto-scroll to bottom on new messages, but only when already near the bottom
-  // so we don't yank the view when a user scrolls up to read history.
+  // so we don't yank the view when the user has scrolled up to read history.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -25,6 +56,7 @@ export default function ChatWindow({
     return (
       <div className="chat-window" ref={containerRef}>
         <div className="empty-state">
+          <BookIcon />
           <p className="empty-state-title">Welcome to StudyBot</p>
           <p className="empty-state-sub">Create a workspace in the sidebar to get started.</p>
         </div>
@@ -36,6 +68,7 @@ export default function ChatWindow({
     return (
       <div className="chat-window" ref={containerRef}>
         <div className="empty-state">
+          <UploadDocIcon />
           <p className="empty-state-title">Upload a document</p>
           <p className="empty-state-sub">Add a PDF to this workspace, then start a chat.</p>
         </div>
@@ -47,6 +80,7 @@ export default function ChatWindow({
     return (
       <div className="chat-window" ref={containerRef}>
         <div className="empty-state">
+          <ChatIcon />
           <p className="empty-state-title">Start a new chat</p>
           <p className="empty-state-sub">Click "+ New Chat" in the sidebar to begin.</p>
         </div>

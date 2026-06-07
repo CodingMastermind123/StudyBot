@@ -1,10 +1,19 @@
 import { useState } from "react";
 import useWorkspaces from "./hooks/useWorkspaces.js";
 import { sendChat } from "./api.js";
+import { getColor } from "./lib/colors.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatWindow from "./components/ChatWindow.jsx";
 import ChatInput from "./components/ChatInput.jsx";
 import PromptChips from "./components/PromptChips.jsx";
+
+// Convert a 6-digit hex colour to an rgba() string at the given opacity.
+function hexRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 export default function App() {
   const {
@@ -50,8 +59,23 @@ export default function App() {
     }
   }
 
+  // Derive --workspace-accent and its opacity variants from the active workspace's
+  // chosen color so every component can reference these CSS custom properties.
+  const accentHex = activeWorkspace
+    ? getColor(activeWorkspace.color).value
+    : "#6366f1";
+  const accentDim   = hexRgba(accentHex, 0.15); // faint fill for active states
+  const accentMuted = hexRgba(accentHex, 0.70); // 70% for section labels
+
   return (
-    <div className="app-layout">
+    <div
+      className="app-layout"
+      style={{
+        "--workspace-accent":       accentHex,
+        "--workspace-accent-dim":   accentDim,
+        "--workspace-accent-muted": accentMuted,
+      }}
+    >
       <Sidebar
         workspaces={store.workspaces}
         activeWorkspace={activeWorkspace}
@@ -68,25 +92,10 @@ export default function App() {
       />
 
       <div className="main-area">
-        {/* Document context bar */}
+        {/* Top bar — shows the active chat title; empty when no chat is selected */}
         <div className="doc-context-bar">
-          {activeDocument ? (
-            <>
-              <span className="doc-badge">{activeWorkspace?.name}</span>
-              <span className="doc-name">{activeDocument.name}</span>
-            </>
-          ) : (
-            <>
-              <span className="doc-badge">No document</span>
-              <span
-                className="doc-name"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                {activeWorkspace
-                  ? "Select or create a chat tied to a document"
-                  : "Upload a PDF to get started"}
-              </span>
-            </>
+          {activeChat && (
+            <span className="doc-name">{activeChat.title}</span>
           )}
         </div>
 
