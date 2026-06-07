@@ -182,6 +182,7 @@ export default function App() {
           isLoading={isLoading}
           streamingContent={streamingContent}
           onAddDocument={addDocument}
+          onSend={handleSend}
         />
 
         {/* Input area — chips + textarea share the same rounded container */}

@@ -37,7 +37,7 @@ function ChatIcon() {
   );
 }
 
-export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent, onAddDocument }) {
+export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent, onAddDocument, onSend }) {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -162,6 +162,7 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
           content={msg.content}
           workspaceName={workspaceName}
           documentName={documentName}
+          onSend={onSend}
         />
       ))}
 

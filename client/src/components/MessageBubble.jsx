@@ -184,11 +184,11 @@ function PrintIcon() {
   );
 }
 
-export default function MessageBubble({ role, content, workspaceName, documentName }) {
+export default function MessageBubble({ role, content, workspaceName, documentName, onSend }) {
   return (
     <div className={`message ${role}`}>
       <div className="message-body">
-        <MessageContent role={role} content={content} />
+        <MessageContent role={role} content={content} onSend={onSend} />
       </div>
       {role === "assistant" && (
         <button
