@@ -31,8 +31,7 @@ app.get("/api/health", (_req, res) => {
 import uploadRouter from "./routes/upload.js";
 app.use("/api", uploadRouter);
 
-// Chat router mounted in Phase 3:
-// import chatRouter from "./routes/chat.js";
-// app.use("/api", chatRouter);
+import chatRouter from "./routes/chat.js";
+app.use("/api", chatRouter);
 
 export default app;
