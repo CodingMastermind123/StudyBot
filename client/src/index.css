@@ -613,6 +613,411 @@ pre {
   background-color: var(--color-text-muted);
 }
 
+/* ─── Sidebar divider ────────────────────────────────────────────────────── */
+.sidebar-divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--space-2) 0;
+}
+
+/* ─── Workspace switcher ─────────────────────────────────────────────────── */
+.workspace-switcher {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ws-empty-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  padding: 0 var(--space-1);
+}
+
+.workspace-pill-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.workspace-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
+  width: 100%;
+}
+
+.workspace-pill:hover {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+}
+
+.workspace-pill.active {
+  background-color: var(--color-accent-dim);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: var(--color-text-primary);
+}
+
+.ws-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ws-pill-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-new-workspace {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  text-align: left;
+  transition: color var(--transition-fast);
+}
+
+.btn-new-workspace:hover {
+  color: var(--color-accent-hover);
+}
+
+/* ─── New workspace form ─────────────────────────────────────────────────── */
+.new-workspace-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.ws-name-input {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  padding: var(--space-2) var(--space-2);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+  width: 100%;
+  transition: border-color var(--transition-fast);
+}
+
+.ws-name-input:focus {
+  border-color: var(--color-accent);
+}
+
+.ws-form-error {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+}
+
+.ws-color-picker {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.ws-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: border-color var(--transition-fast),
+              transform var(--transition-fast);
+}
+
+.ws-color-swatch:hover {
+  transform: scale(1.2);
+}
+
+.ws-color-swatch.selected {
+  border-color: var(--color-text-primary);
+}
+
+.ws-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.btn-ws-create {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--color-accent);
+  color: #fff;
+  border-radius: var(--radius-xs);
+  transition: filter var(--transition-fast);
+}
+
+.btn-ws-create:hover {
+  filter: brightness(1.15);
+}
+
+.btn-ws-cancel {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-ws-cancel:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--color-text-muted);
+}
+
+/* ─── Workspace panel ────────────────────────────────────────────────────── */
+.workspace-panel {
+  padding: 0 var(--space-3) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.quota-banner {
+  font-size: var(--text-xs);
+}
+
+.sidebar-section-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-1);
+}
+
+.sidebar-empty-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ─── Document list ──────────────────────────────────────────────────────── */
+.doc-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.doc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-1);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+}
+
+.doc-item:hover {
+  background-color: var(--color-surface-elevated);
+}
+
+.doc-item-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.doc-item-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary);
+}
+
+.doc-item-size {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.btn-icon-delete {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: var(--radius-xs);
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.btn-icon-delete:hover {
+  color: var(--color-error);
+}
+
+.upload-zone.compact {
+  padding: var(--space-3) var(--space-3);
+  gap: var(--space-1);
+}
+
+.upload-zone.compact .upload-zone-label {
+  font-size: var(--text-xs);
+}
+
+.upload-zone.compact .upload-zone-sub {
+  font-size: 10px;
+}
+
+.upload-zone.uploading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.upload-error {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+}
+
+/* ─── Chat list ──────────────────────────────────────────────────────────── */
+.chat-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chat-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.chat-item:hover {
+  background-color: var(--color-surface-elevated);
+}
+
+.chat-item.active {
+  background-color: var(--color-accent-dim);
+  border-left-color: var(--color-accent);
+}
+
+.chat-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chat-item-title {
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-item-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-new-chat-sidebar {
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  text-align: left;
+  transition: color var(--transition-fast),
+              border-color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.btn-new-chat-sidebar:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-dim);
+}
+
+.btn-new-chat-sidebar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Inline doc picker ──────────────────────────────────────────────────── */
+.doc-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.doc-picker-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.doc-picker-option {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  text-align: left;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+  transition: color var(--transition-fast),
+              border-color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.doc-picker-option:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-dim);
+}
+
+/* ─── Delete workspace button ────────────────────────────────────────────── */
+.btn-delete-workspace {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.btn-delete-workspace:hover {
+  color: var(--color-error);
+}
+
 /* ─── Keyframe animations ────────────────────────────────────────────────── */
 @keyframes fadeSlideIn {
   from {
