@@ -20,7 +20,8 @@ export const PROMPTS = [
   {
     id: "practice",
     label: "Practice Problems",
-    prompt:
-      "Generate 5 practice questions based on this document. Include a mix of question types and provide the answers below each question.",
+    // prompt is built dynamically in PromptChips — this field is unused for this id
+    buildPrompt: (count, difficulty) =>
+      `Generate ${count} ${difficulty} practice problems based on the document. Number them 1 through ${count}. Do not include answers. After the last question add a separator and text: "Reply show answers when ready to see solutions."`,
   },
 ];
