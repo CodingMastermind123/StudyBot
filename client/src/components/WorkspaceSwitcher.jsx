@@ -7,6 +7,7 @@ export default function WorkspaceSwitcher({
   activeWorkspaceId,
   onSelect,
   onCreateWorkspace,
+  onDeleteWorkspace,
 }) {
   const [showForm, setShowForm] = useState(false);
 
@@ -26,7 +27,7 @@ export default function WorkspaceSwitcher({
           const color = getColor(ws.color);
           const isActive = ws.id === activeWorkspaceId;
           return (
-            <button
+            <div
               key={ws.id}
               className={`workspace-pill${isActive ? " active" : ""}`}
               onClick={() => onSelect(ws.id)}
@@ -36,7 +37,17 @@ export default function WorkspaceSwitcher({
                 style={{ backgroundColor: color.value }}
               />
               <span className="ws-pill-name">{ws.name}</span>
-            </button>
+              <button
+                className="btn-icon-delete ws-pill-delete"
+                title="Delete workspace"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteWorkspace(ws.id);
+                }}
+              >
+                ×
+              </button>
+            </div>
           );
         })}
       </div>

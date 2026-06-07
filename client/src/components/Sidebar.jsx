@@ -27,6 +27,7 @@ export default function Sidebar({
           activeWorkspaceId={activeWorkspace?.id ?? null}
           onSelect={onSelectWorkspace}
           onCreateWorkspace={onCreateWorkspace}
+          onDeleteWorkspace={onDeleteWorkspace}
         />
 
         {activeWorkspace && (
@@ -46,17 +47,6 @@ export default function Sidebar({
         )}
       </div>
 
-      {activeWorkspace && (
-        <div className="sidebar-footer">
-          <button
-            className="btn-delete-workspace"
-            onClick={() => onDeleteWorkspace(activeWorkspace.id)}
-            title="Delete this workspace"
-          >
-            Delete workspace
-          </button>
-        </div>
-      )}
     </aside>
   );
 }
