@@ -289,11 +289,11 @@ pre {
 }
 
 .message.user .message-body {
-  background-color: var(--color-surface-elevated);
+  background-color: var(--workspace-accent-dim);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-lg);
   border-bottom-right-radius: var(--radius-xs);
-  color: var(--color-text-primary);
+  color: var(--workspace-accent);
   max-width: 72%;
 }
 
@@ -767,6 +767,28 @@ pre {
 }
 
 .ws-color-swatch.selected {
+  border-color: var(--color-text-primary);
+}
+
+.ws-color-swatch-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  border: 2px dashed var(--color-border);
+  background: transparent;
+}
+
+.ws-color-swatch-custom:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--color-text-muted);
+  transform: scale(1.2);
+}
+
+.ws-color-swatch-custom.selected {
+  border-style: solid;
   border-color: var(--color-text-primary);
 }
 

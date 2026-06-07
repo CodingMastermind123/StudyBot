@@ -11,5 +11,6 @@ export const ACCENT_COLORS = [
 ];
 
 export function getColor(id) {
+  if (id && id.startsWith("#")) return { id, name: "Custom", value: id };
   return ACCENT_COLORS.find((c) => c.id === id) ?? ACCENT_COLORS[0];
 }

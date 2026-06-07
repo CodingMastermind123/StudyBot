@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ACCENT_COLORS } from "../lib/colors.js";
 
 export default function NewWorkspaceForm({ onSubmit, onCancel }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState(ACCENT_COLORS[0].id);
   const [error, setError] = useState("");
+  const colorInputRef = useRef(null);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -18,6 +19,8 @@ export default function NewWorkspaceForm({ onSubmit, onCancel }) {
     setColor(ACCENT_COLORS[0].id);
     setError("");
   }
+
+  const isCustomColor = color.startsWith("#");
 
   return (
     <form className="new-workspace-form" onSubmit={handleSubmit}>
@@ -46,6 +49,22 @@ export default function NewWorkspaceForm({ onSubmit, onCancel }) {
             onClick={() => setColor(c.id)}
           />
         ))}
+        <button
+          type="button"
+          title="Custom color"
+          className={`ws-color-swatch ws-color-swatch-custom${isCustomColor ? " selected" : ""}`}
+          style={isCustomColor ? { backgroundColor: color } : undefined}
+          onClick={() => colorInputRef.current?.click()}
+        >
+          {!isCustomColor && "+"}
+        </button>
+        <input
+          ref={colorInputRef}
+          type="color"
+          style={{ display: "none" }}
+          value={isCustomColor ? color : "#6366f1"}
+          onChange={(e) => setColor(e.target.value)}
+        />
       </div>
 
       <div className="ws-form-actions">

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   loadStore,
   saveStore,
@@ -10,6 +10,10 @@ import {
 export default function useWorkspaces() {
   const [store, setStore] = useState(() => loadStore());
   const [quotaError, setQuotaError] = useState(null);
+
+  // Always-current ref so callbacks don't capture stale store snapshots.
+  const storeRef = useRef(store);
+  storeRef.current = store;
 
   // Persist a new store value; surfaces quota failures via quotaError state
   // instead of letting them crash a render.
@@ -135,20 +139,24 @@ export default function useWorkspaces() {
     [store, persist]
   );
 
-  // appendMessage targets the active chat by id to avoid stale-closure index issues.
+  // appendMessage reads storeRef.current so it never operates on a stale snapshot.
+  // This prevents the second call (for the assistant reply) from overwriting the
+  // user message and title that the first call already wrote.
   const appendMessage = useCallback(
     (role, content) => {
-      if (!store.activeChatId) return;
+      const currentStore = storeRef.current;
+      if (!currentStore.activeChatId) return;
       const now = Date.now();
-      const nextWorkspaces = store.workspaces.map((ws) => {
-        const chatIdx = ws.chats.findIndex((c) => c.id === store.activeChatId);
+      const nextWorkspaces = currentStore.workspaces.map((ws) => {
+        const chatIdx = ws.chats.findIndex((c) => c.id === currentStore.activeChatId);
         if (chatIdx === -1) return ws;
         const chat = ws.chats[chatIdx];
         const isFirstUserMsg =
           role === "user" && chat.messages.every((m) => m.role !== "user");
+        const shouldSetTitle = isFirstUserMsg && chat.title === "New chat";
         const updatedChat = {
           ...chat,
-          title: isFirstUserMsg
+          title: shouldSetTitle
             ? content.trim().slice(0, 40) + (content.trim().length > 40 ? "…" : "")
             : chat.title,
           updatedAt: now,
@@ -158,9 +166,9 @@ export default function useWorkspaces() {
         newChats[chatIdx] = updatedChat;
         return { ...ws, chats: newChats };
       });
-      persist({ ...store, workspaces: nextWorkspaces });
+      persist({ ...currentStore, workspaces: nextWorkspaces });
     },
-    [store, persist]
+    [persist]
   );
 
   const deleteWorkspace = useCallback(

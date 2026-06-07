@@ -16,6 +16,9 @@ export default function WorkspaceSwitcher({
   const [menuMode, setMenuMode] = useState(null); // null | 'rename' | 'color' | 'deleteConfirm'
   const [renameValue, setRenameValue] = useState("");
   const menuContainerRef = useRef(null);
+  const colorMenuInputRef = useRef(null);
+  // Tracks the last custom hex value shown in the native picker (so it opens on the right color).
+  const [customMenuColor, setCustomMenuColor] = useState("#6366f1");
 
   // Close the dropdown when clicking anywhere outside the open wrapper
   useEffect(() => {
@@ -143,6 +146,31 @@ export default function WorkspaceSwitcher({
                           }}
                         />
                       ))}
+                      {(() => {
+                        const isCustom = ws.color?.startsWith("#");
+                        return (
+                          <>
+                            <button
+                              className={`ws-color-swatch ws-color-swatch-custom${isCustom ? " selected" : ""}`}
+                              style={isCustom ? { backgroundColor: ws.color } : undefined}
+                              title="Custom color"
+                              onClick={() => colorMenuInputRef.current?.click()}
+                            >
+                              {!isCustom && "+"}
+                            </button>
+                            <input
+                              ref={colorMenuInputRef}
+                              type="color"
+                              style={{ display: "none" }}
+                              value={isCustom ? ws.color : customMenuColor}
+                              onChange={(e) => {
+                                setCustomMenuColor(e.target.value);
+                                onRecolorWorkspace(ws.id, e.target.value);
+                              }}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
 
