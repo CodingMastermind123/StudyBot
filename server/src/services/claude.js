@@ -42,3 +42,42 @@ export async function getReply({ messages, documentText }) {
     .map((block) => block.text)
     .join("");
 }
+
+/**
+ * Stream a conversation turn from Claude, calling onToken for each text delta.
+ * @param {{ messages: Array<{role: string, content: string}>, documentText: string|null, onToken: (t: string) => void }} params
+ * @returns {Promise<void>}
+ */
+export async function streamReply({ messages, documentText, onToken }) {
+  const system = documentText
+    ? [
+        {
+          type: "text",
+          text: "You are a helpful study assistant. Answer questions based on the provided document. Be clear, accurate, and educational.",
+        },
+        {
+          type: "text",
+          text: `Document content:\n\n${documentText}`,
+          cache_control: { type: "ephemeral" },
+        },
+      ]
+    : "You are a helpful study assistant. No document has been loaded yet. Answer general study questions helpfully.";
+
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 2048,
+    system,
+    messages,
+  });
+
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta?.type === "text_delta"
+    ) {
+      onToken(event.delta.text);
+    }
+  }
+
+  await stream.finalMessage();
+}

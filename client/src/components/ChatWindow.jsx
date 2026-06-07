@@ -36,12 +36,13 @@ function ChatIcon() {
   );
 }
 
-export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
+export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent }) {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Auto-scroll to bottom on new messages, but only when already near the bottom
-  // so we don't yank the view when the user has scrolled up to read history.
+  // Auto-scroll to bottom on new messages and on each streaming token,
+  // but only when already near the bottom so we don't yank the view when
+  // the user has scrolled up to read history.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -49,7 +50,7 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
     if (distanceFromBottom < 120) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [activeChat?.messages?.length, isLoading]);
+  }, [activeChat?.messages?.length, isLoading, streamingContent]);
 
   // Context-aware empty states
   if (!activeWorkspace) {
@@ -102,7 +103,8 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
         <MessageBubble key={i} role={msg.role} content={msg.content} />
       ))}
 
-      {isLoading && (
+      {/* Typing dots: show while loading but before the first streaming token */}
+      {isLoading && !streamingContent && (
         <div className="message assistant">
           <div className="message-body">
             <div className="typing-indicator">
@@ -112,6 +114,11 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Live streaming bubble: replaces typing dots once tokens start arriving */}
+      {streamingContent && (
+        <MessageBubble role="assistant" content={streamingContent} />
       )}
 
       <div ref={bottomRef} />

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import useWorkspaces from "./hooks/useWorkspaces.js";
-import { sendChat, uploadPdf } from "./api.js";
+import { streamChat, sendChat, uploadPdf } from "./api.js";
 import { getColor } from "./lib/colors.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatWindow from "./components/ChatWindow.jsx";
@@ -37,6 +37,9 @@ export default function App() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [sendError, setSendError] = useState(null);
+  // streamingContent: null = not streaming; "" = started, waiting for first token;
+  // non-empty string = tokens arriving and being shown live in the chat window.
+  const [streamingContent, setStreamingContent] = useState(null);
 
   // ── Main-area drag-drop ────────────────────────────────────────────────────
   // Active when the workspace exists but has no documents yet (and no active chat).
@@ -70,13 +73,27 @@ export default function App() {
     const documentText = activeDocument?.text ?? null;
     setIsLoading(true);
     setSendError(null);
+    setStreamingContent(""); // mark streaming as started (shows typing dots until first token)
+
+    let accumulated = "";
     try {
-      const { reply } = await sendChat({ messages: outgoing, documentText });
-      appendMessage("assistant", reply);
+      await streamChat({
+        messages: outgoing,
+        documentText,
+        onToken: (token) => {
+          accumulated += token;
+          setStreamingContent(accumulated);
+        },
+      });
+      // Persist the complete reply to the store once streaming is done
+      appendMessage("assistant", accumulated);
     } catch (err) {
+      // If streaming produced partial content before the error, still save it
+      if (accumulated) appendMessage("assistant", accumulated);
       setSendError(err.message || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
+      setStreamingContent(null);
     }
   }
 
@@ -163,6 +180,7 @@ export default function App() {
           activeWorkspace={activeWorkspace}
           activeChat={activeChat}
           isLoading={isLoading}
+          streamingContent={streamingContent}
         />
 
         {/* Input area — chips + textarea share the same rounded container */}
