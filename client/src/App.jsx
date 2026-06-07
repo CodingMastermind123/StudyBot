@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import useWorkspaces from "./hooks/useWorkspaces.js";
-import { sendChat } from "./api.js";
+import { sendChat, uploadPdf } from "./api.js";
 import { getColor } from "./lib/colors.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatWindow from "./components/ChatWindow.jsx";
@@ -31,22 +31,43 @@ export default function App() {
     deleteWorkspace,
     deleteChat,
     deleteDocument,
+    renameWorkspace,
+    recolorWorkspace,
   } = useWorkspaces();
 
   const [isLoading, setIsLoading] = useState(false);
   const [sendError, setSendError] = useState(null);
 
-  // Shared send handler for both ChatInput and PromptChips.
-  // Constructs the outgoing messages array explicitly (including the new user
-  // message) so the payload is correct without waiting for a React state flush.
+  // ── Main-area drag-drop ────────────────────────────────────────────────────
+  // Active when the workspace exists but has no documents yet (and no active chat).
+  const showMainDropzone =
+    !activeChat && activeWorkspace && activeWorkspace.documents.length === 0;
+
+  const [dragOverMain, setDragOverMain] = useState(false);
+  const dragCountRef = useRef(0); // reliably track enter/leave across children
+
+  async function handleMainDrop(file) {
+    if (!activeWorkspace || !file) return;
+    if (file.type !== "application/pdf") return;
+    try {
+      const data = await uploadPdf(file);
+      addDocument(activeWorkspace.id, {
+        name: data.filename,
+        charCount: data.charCount,
+        text: data.text,
+      });
+    } catch {
+      // DocumentList in the sidebar shows its own errors; ignore here to keep the
+      // drop overlay simple. User can retry via the sidebar upload zone.
+    }
+  }
+
+  // ── Shared chat send handler ───────────────────────────────────────────────
   async function handleSend(content) {
     if (!activeChat || isLoading) return;
-
     appendMessage("user", content);
-
     const outgoing = [...activeChat.messages, { role: "user", content }];
     const documentText = activeDocument?.text ?? null;
-
     setIsLoading(true);
     setSendError(null);
     try {
@@ -59,13 +80,11 @@ export default function App() {
     }
   }
 
-  // Derive --workspace-accent and its opacity variants from the active workspace's
-  // chosen color so every component can reference these CSS custom properties.
-  const accentHex = activeWorkspace
-    ? getColor(activeWorkspace.color).value
-    : "#6366f1";
+  // ── Workspace accent CSS custom properties ────────────────────────────────
+  const accentHex   = activeWorkspace ? getColor(activeWorkspace.color).value : "#6366f1";
   const accentDim   = hexRgba(accentHex, 0.15); // faint fill for active states
   const accentMuted = hexRgba(accentHex, 0.70); // 70% for section labels
+  const accentFaint = hexRgba(accentHex, 0.05); // 5% for the full-area drop overlay
 
   return (
     <div
@@ -74,6 +93,7 @@ export default function App() {
         "--workspace-accent":       accentHex,
         "--workspace-accent-dim":   accentDim,
         "--workspace-accent-muted": accentMuted,
+        "--workspace-accent-faint": accentFaint,
       }}
     >
       <Sidebar
@@ -89,9 +109,49 @@ export default function App() {
         onSelectChat={selectChat}
         onDeleteChat={deleteChat}
         onDeleteWorkspace={deleteWorkspace}
+        onRenameWorkspace={renameWorkspace}
+        onRecolorWorkspace={recolorWorkspace}
       />
 
-      <div className="main-area">
+      {/* ── Main area ──────────────────────────────────────────────────────── */}
+      <div
+        className="main-area"
+        onDragEnter={showMainDropzone ? (e) => {
+          e.preventDefault();
+          dragCountRef.current++;
+          setDragOverMain(true);
+        } : undefined}
+        onDragOver={showMainDropzone ? (e) => e.preventDefault() : undefined}
+        onDragLeave={showMainDropzone ? () => {
+          dragCountRef.current--;
+          if (dragCountRef.current <= 0) {
+            dragCountRef.current = 0;
+            setDragOverMain(false);
+          }
+        } : undefined}
+        onDrop={showMainDropzone ? (e) => {
+          e.preventDefault();
+          dragCountRef.current = 0;
+          setDragOverMain(false);
+          handleMainDrop(e.dataTransfer.files[0]);
+        } : undefined}
+      >
+        {/* Full-area drop overlay */}
+        {dragOverMain && showMainDropzone && (
+          <div className="main-drop-overlay">
+            {/* Upload document SVG icon */}
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="1.2"
+              strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <polyline points="9 15 12 12 15 15" />
+            </svg>
+            <p className="main-drop-label">Drop to upload</p>
+          </div>
+        )}
+
         {/* Top bar — shows the active chat title; empty when no chat is selected */}
         <div className="doc-context-bar">
           {activeChat && (

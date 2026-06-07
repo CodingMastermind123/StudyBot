@@ -67,7 +67,7 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
   if (activeWorkspace.documents.length === 0) {
     return (
       <div className="chat-window" ref={containerRef}>
-        <div className="empty-state">
+        <div className="empty-state upload-state">
           <UploadDocIcon />
           <p className="empty-state-title">Upload a document</p>
           <p className="empty-state-sub">Add a PDF to this workspace, then start a chat.</p>

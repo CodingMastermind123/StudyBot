@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { getColor } from "../lib/colors.js";
+import { useState, useEffect, useRef } from "react";
+import { getColor, ACCENT_COLORS } from "../lib/colors.js";
 import NewWorkspaceForm from "./NewWorkspaceForm.jsx";
 
 export default function WorkspaceSwitcher({
@@ -8,8 +8,44 @@ export default function WorkspaceSwitcher({
   onSelect,
   onCreateWorkspace,
   onDeleteWorkspace,
+  onRenameWorkspace,
+  onRecolorWorkspace,
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [menuMode, setMenuMode] = useState(null); // null | 'rename' | 'color' | 'deleteConfirm'
+  const [renameValue, setRenameValue] = useState("");
+  const menuContainerRef = useRef(null);
+
+  // Close the dropdown when clicking anywhere outside the open wrapper
+  useEffect(() => {
+    if (!openMenuId) return;
+    function handleOutsideClick(e) {
+      if (!menuContainerRef.current?.contains(e.target)) closeMenu();
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [openMenuId]);
+
+  function toggleMenu(wsId, wsName, e) {
+    e.stopPropagation();
+    if (openMenuId === wsId) { closeMenu(); return; }
+    setOpenMenuId(wsId);
+    setMenuMode(null);
+    setRenameValue(wsName);
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null);
+    setMenuMode(null);
+    setRenameValue("");
+  }
+
+  function submitRename(wsId) {
+    const trimmed = renameValue.trim();
+    if (trimmed) onRenameWorkspace(wsId, trimmed);
+    closeMenu();
+  }
 
   function handleCreate(data) {
     onCreateWorkspace(data);
@@ -26,42 +62,120 @@ export default function WorkspaceSwitcher({
         {workspaces.map((ws) => {
           const color = getColor(ws.color);
           const isActive = ws.id === activeWorkspaceId;
+          const isMenuOpen = openMenuId === ws.id;
+
           return (
             <div
               key={ws.id}
-              className={`workspace-pill${isActive ? " active" : ""}`}
-              onClick={() => onSelect(ws.id)}
+              className="ws-pill-wrapper"
+              ref={(el) => { if (isMenuOpen) menuContainerRef.current = el; }}
             >
-              <span
-                className="ws-color-dot"
-                style={{ backgroundColor: color.value }}
-              />
-              <span className="ws-pill-name">{ws.name}</span>
-              <button
-                className="btn-icon-delete ws-pill-delete"
-                title="Delete workspace"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteWorkspace(ws.id);
-                }}
+              {/* ── Pill row ── */}
+              <div
+                className={`workspace-pill${isActive ? " active" : ""}`}
+                onClick={() => onSelect(ws.id)}
               >
-                ×
-              </button>
+                <span className="ws-color-dot" style={{ backgroundColor: color.value }} />
+                <span className="ws-pill-name">{ws.name}</span>
+                <button
+                  className={`ws-context-btn${isMenuOpen ? " open" : ""}`}
+                  title="Workspace options"
+                  onClick={(e) => toggleMenu(ws.id, ws.name, e)}
+                >
+                  ···
+                </button>
+              </div>
+
+              {/* ── Context dropdown ── */}
+              {isMenuOpen && (
+                <div className="ws-context-menu">
+                  {menuMode === null && (
+                    <>
+                      <button
+                        className="ws-menu-item"
+                        onClick={() => setMenuMode("rename")}
+                      >
+                        Rename
+                      </button>
+                      <button
+                        className="ws-menu-item"
+                        onClick={() => setMenuMode("color")}
+                      >
+                        Change Color
+                      </button>
+                      <button
+                        className="ws-menu-item danger"
+                        onClick={() => setMenuMode("deleteConfirm")}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+
+                  {menuMode === "rename" && (
+                    <div className="ws-menu-section">
+                      <input
+                        className="ws-menu-rename-input"
+                        value={renameValue}
+                        autoFocus
+                        maxLength={60}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") submitRename(ws.id);
+                          if (e.key === "Escape") closeMenu();
+                        }}
+                        onBlur={() => submitRename(ws.id)}
+                      />
+                    </div>
+                  )}
+
+                  {menuMode === "color" && (
+                    <div className="ws-menu-colors">
+                      {ACCENT_COLORS.map((c) => (
+                        <button
+                          key={c.id}
+                          className={`ws-color-swatch${ws.color === c.id ? " selected" : ""}`}
+                          style={{ backgroundColor: c.value }}
+                          title={c.name}
+                          onClick={() => {
+                            onRecolorWorkspace(ws.id, c.id);
+                            closeMenu();
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {menuMode === "deleteConfirm" && (
+                    <div className="ws-menu-section">
+                      <p className="ws-menu-confirm-text">Are you sure?</p>
+                      <div className="ws-menu-confirm-actions">
+                        <button
+                          className="ws-menu-confirm-yes"
+                          onClick={() => {
+                            onDeleteWorkspace(ws.id);
+                            closeMenu();
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button className="ws-menu-confirm-no" onClick={closeMenu}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
       {showForm ? (
-        <NewWorkspaceForm
-          onSubmit={handleCreate}
-          onCancel={() => setShowForm(false)}
-        />
+        <NewWorkspaceForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
       ) : (
-        <button
-          className="btn-new-workspace"
-          onClick={() => setShowForm(true)}
-        >
+        <button className="btn-new-workspace" onClick={() => setShowForm(true)}>
           + New Workspace
         </button>
       )}

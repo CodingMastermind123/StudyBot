@@ -14,6 +14,8 @@ export default function Sidebar({
   onSelectChat,
   onDeleteChat,
   onDeleteWorkspace,
+  onRenameWorkspace,
+  onRecolorWorkspace,
 }) {
   return (
     <aside className="sidebar">
@@ -28,6 +30,8 @@ export default function Sidebar({
           onSelect={onSelectWorkspace}
           onCreateWorkspace={onCreateWorkspace}
           onDeleteWorkspace={onDeleteWorkspace}
+          onRenameWorkspace={onRenameWorkspace}
+          onRecolorWorkspace={onRecolorWorkspace}
         />
 
         {activeWorkspace && (

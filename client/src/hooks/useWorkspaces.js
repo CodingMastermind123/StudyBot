@@ -221,6 +221,32 @@ export default function useWorkspaces() {
     [store, persist]
   );
 
+  const renameWorkspace = useCallback(
+    (id, name) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      persist({
+        ...store,
+        workspaces: store.workspaces.map((ws) =>
+          ws.id === id ? { ...ws, name: trimmed } : ws
+        ),
+      });
+    },
+    [store, persist]
+  );
+
+  const recolorWorkspace = useCallback(
+    (id, colorId) => {
+      persist({
+        ...store,
+        workspaces: store.workspaces.map((ws) =>
+          ws.id === id ? { ...ws, color: colorId } : ws
+        ),
+      });
+    },
+    [store, persist]
+  );
+
   return {
     store,
     quotaError,
@@ -238,5 +264,7 @@ export default function useWorkspaces() {
     deleteWorkspace,
     deleteChat,
     deleteDocument,
+    renameWorkspace,
+    recolorWorkspace,
   };
 }
