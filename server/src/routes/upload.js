@@ -23,7 +23,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     return res.status(400).json({ error: "No file uploaded." });
   }
 
-  const maxChars = parseInt(process.env.MAX_DOC_CHARS || "200000", 10);
+  const maxChars = parseInt(process.env.MAX_DOC_CHARS || "40000", 10);
 
   try {
     let { text, pages } = await extractText(req.file.buffer);
