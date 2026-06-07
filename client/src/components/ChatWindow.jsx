@@ -142,6 +142,11 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
     );
   }
 
+  const workspaceName = activeWorkspace?.name;
+  const documentName = activeWorkspace?.documents.find(
+    (d) => d.id === activeChat?.documentId
+  )?.name;
+
   return (
     <div className="chat-window" ref={containerRef}>
       {activeChat.messages.length === 0 && !isLoading && (
@@ -151,7 +156,13 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
       )}
 
       {activeChat.messages.map((msg, i) => (
-        <MessageBubble key={i} role={msg.role} content={msg.content} />
+        <MessageBubble
+          key={i}
+          role={msg.role}
+          content={msg.content}
+          workspaceName={workspaceName}
+          documentName={documentName}
+        />
       ))}
 
       {/* Typing dots: show while loading but before the first streaming token */}

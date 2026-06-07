@@ -281,6 +281,7 @@ pre {
 
 .message.assistant {
   align-items: flex-start;
+  position: relative;
 }
 
 .message-body {
@@ -377,6 +378,34 @@ pre {
 
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Message export button ─────────────────────────────────────────────── */
+.message-export-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  opacity: 0;
+  transition: opacity var(--transition-fast),
+              background-color var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.message.assistant:hover .message-export-btn {
+  opacity: 1;
+}
+
+.message-export-btn:hover {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
 
 /* ─── Mermaid diagram card ───────────────────────────────────────────────── */
 .mermaid-card {
