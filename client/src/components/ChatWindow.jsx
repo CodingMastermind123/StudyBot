@@ -68,9 +68,11 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading }) {
     return (
       <div className="chat-window" ref={containerRef}>
         <div className="empty-state upload-state">
-          <UploadDocIcon />
-          <p className="empty-state-title">Upload a document</p>
-          <p className="empty-state-sub">Add a PDF to this workspace, then start a chat.</p>
+          <div className="upload-state-box">
+            <UploadDocIcon />
+            <p className="empty-state-title">Upload a document</p>
+            <p className="empty-state-sub">Add a PDF to this workspace, then start a chat.</p>
+          </div>
         </div>
       </div>
     );
