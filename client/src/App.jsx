@@ -1,6 +1,10 @@
-// Phase 7 will wire ChatWindow, ChatInput, PromptChips into the main area.
+import { useState } from "react";
 import useWorkspaces from "./hooks/useWorkspaces.js";
+import { sendChat } from "./api.js";
 import Sidebar from "./components/Sidebar.jsx";
+import ChatWindow from "./components/ChatWindow.jsx";
+import ChatInput from "./components/ChatInput.jsx";
+import PromptChips from "./components/PromptChips.jsx";
 
 export default function App() {
   const {
@@ -20,18 +24,30 @@ export default function App() {
     deleteDocument,
   } = useWorkspaces();
 
-  // ── Empty-state hint for the main area ───────────────────────────────────
-  let emptyTitle = "Welcome to StudyBot";
-  let emptySub = "Create a workspace in the sidebar to get started.";
-  if (activeWorkspace && activeWorkspace.documents.length === 0) {
-    emptyTitle = "Upload a document";
-    emptySub = "Add a PDF to this workspace, then start a chat.";
-  } else if (activeWorkspace && activeWorkspace.chats.length === 0) {
-    emptyTitle = "Start a new chat";
-    emptySub = 'Click "+ New Chat" in the sidebar to begin.';
-  } else if (activeWorkspace && !activeChat) {
-    emptyTitle = "Select a chat";
-    emptySub = "Pick a chat from the sidebar or create a new one.";
+  const [isLoading, setIsLoading] = useState(false);
+  const [sendError, setSendError] = useState(null);
+
+  // Shared send handler for both ChatInput and PromptChips.
+  // Constructs the outgoing messages array explicitly (including the new user
+  // message) so the payload is correct without waiting for a React state flush.
+  async function handleSend(content) {
+    if (!activeChat || isLoading) return;
+
+    appendMessage("user", content);
+
+    const outgoing = [...activeChat.messages, { role: "user", content }];
+    const documentText = activeDocument?.text ?? null;
+
+    setIsLoading(true);
+    setSendError(null);
+    try {
+      const { reply } = await sendChat({ messages: outgoing, documentText });
+      appendMessage("assistant", reply);
+    } catch (err) {
+      setSendError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -51,21 +67,21 @@ export default function App() {
         onDeleteWorkspace={deleteWorkspace}
       />
 
-      {/* ── Main area (ChatWindow + input wired in Phase 7) ─────────────── */}
       <div className="main-area">
         {/* Document context bar */}
         <div className="doc-context-bar">
           {activeDocument ? (
             <>
-              <span className="doc-badge">
-                {activeWorkspace?.name}
-              </span>
+              <span className="doc-badge">{activeWorkspace?.name}</span>
               <span className="doc-name">{activeDocument.name}</span>
             </>
           ) : (
             <>
               <span className="doc-badge">No document</span>
-              <span className="doc-name" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="doc-name"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 {activeWorkspace
                   ? "Select or create a chat tied to a document"
                   : "Upload a PDF to get started"}
@@ -74,46 +90,32 @@ export default function App() {
           )}
         </div>
 
-        {/* Chat window — messages rendered in Phase 7 */}
-        <div className="chat-window">
-          {!activeChat ? (
-            <div className="empty-state">
-              <p className="empty-state-title">{emptyTitle}</p>
-              <p className="empty-state-sub">{emptySub}</p>
-            </div>
-          ) : (
-            <div className="empty-state">
-              <p className="empty-state-title">Chat ready</p>
-              <p className="empty-state-sub">
-                Message rendering wired in Phase 7.
-              </p>
-            </div>
-          )}
-        </div>
+        <ChatWindow
+          activeWorkspace={activeWorkspace}
+          activeChat={activeChat}
+          isLoading={isLoading}
+        />
 
-        {/* Sticky input area — fully wired in Phase 7 */}
+        {/* Input area — chips + textarea share the same rounded container */}
         <div className="input-area">
+          {sendError && (
+            <p className="banner error" style={{ marginBottom: "var(--space-2)" }}>
+              {sendError}
+            </p>
+          )}
           <div className="input-wrapper">
-            <div className="prompt-chips">
-              {["Summarize", "Notes", "Diagram", "Practice Problems"].map(
-                (label) => (
-                  <button key={label} className="chip" disabled>
-                    {label}
-                  </button>
-                )
-              )}
-            </div>
-            <textarea
-              className="chat-textarea"
-              placeholder="Ask something about your document…"
-              rows={1}
-              disabled
+            <PromptChips
+              activeChat={activeChat}
+              isLoading={isLoading}
+              onSend={handleSend}
             />
-            <div className="input-footer">
-              <button className="btn-send" disabled>
-                ↑
-              </button>
-            </div>
+            <ChatInput
+              activeChat={activeChat}
+              isLoading={isLoading}
+              onSend={handleSend}
+              onError={setSendError}
+              onClearError={() => setSendError(null)}
+            />
           </div>
         </div>
       </div>
