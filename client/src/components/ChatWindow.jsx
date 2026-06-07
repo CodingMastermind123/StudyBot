@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
+import { uploadPdf } from "../api.js";
 
 /* ── Inline SVG icons for empty states ─────────────────────────────────── */
 function BookIcon() {
@@ -36,9 +37,36 @@ function ChatIcon() {
   );
 }
 
-export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent }) {
+export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent, onAddDocument }) {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
+
+  // ── Center upload zone state ───────────────────────────────────────────────
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  async function handleCenterFile(file) {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setUploadError("Only PDF files are supported.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const data = await uploadPdf(file);
+      onAddDocument(activeWorkspace.id, {
+        name: data.filename,
+        charCount: data.charCount,
+        text: data.text,
+      });
+    } catch (err) {
+      setUploadError(err.message || "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   // Auto-scroll to bottom on new messages and on each streaming token,
   // but only when already near the bottom so we don't yank the view when
@@ -69,11 +97,34 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
     return (
       <div className="chat-window" ref={containerRef}>
         <div className="empty-state upload-state">
-          <div className="upload-state-box">
+          <div
+            className={`upload-state-box${uploading ? " uploading" : ""}`}
+            onClick={() => !uploading && fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && !uploading && fileInputRef.current?.click()}
+          >
             <UploadDocIcon />
-            <p className="empty-state-title">Upload a document</p>
-            <p className="empty-state-sub">Add a PDF to this workspace, then start a chat.</p>
+            {uploading ? (
+              <p className="empty-state-title">Uploading…</p>
+            ) : (
+              <>
+                <p className="empty-state-title">Upload a document</p>
+                <p className="empty-state-sub">Click to choose a PDF, or drag & drop one here.</p>
+              </>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              style={{ display: "none" }}
+              onChange={(e) => { handleCenterFile(e.target.files[0]); e.target.value = ""; }}
+              disabled={uploading}
+            />
           </div>
+          {uploadError && (
+            <p className="upload-center-error">{uploadError}</p>
+          )}
         </div>
       </div>
     );

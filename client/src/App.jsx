@@ -181,6 +181,7 @@ export default function App() {
           activeChat={activeChat}
           isLoading={isLoading}
           streamingContent={streamingContent}
+          onAddDocument={addDocument}
         />
 
         {/* Input area — chips + textarea share the same rounded container */}

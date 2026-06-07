@@ -1057,6 +1057,20 @@ pre {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--workspace-accent) 4%, transparent);
   justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base),
+              background var(--transition-base);
+}
+
+.upload-state-box:hover {
+  border-color: var(--workspace-accent);
+  box-shadow: 0 0 0 3px var(--workspace-accent-dim);
+  background: color-mix(in srgb, var(--workspace-accent) 8%, transparent);
+}
+
+.upload-state-box.uploading {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .upload-state-box .empty-icon {
@@ -1072,6 +1086,12 @@ pre {
 .upload-state-box .empty-state-sub {
   font-size: 15px;
   margin-top: 12px;
+}
+
+.upload-center-error {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-error);
 }
 
 /* ─── Full-area drop overlay ─────────────────────────────────────────────── */
