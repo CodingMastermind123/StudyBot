@@ -28,10 +28,11 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// Routers mounted in later phases:
-// import uploadRouter from "./routes/upload.js";
+import uploadRouter from "./routes/upload.js";
+app.use("/api", uploadRouter);
+
+// Chat router mounted in Phase 3:
 // import chatRouter from "./routes/chat.js";
-// app.use("/api", uploadRouter);
 // app.use("/api", chatRouter);
 
 export default app;
