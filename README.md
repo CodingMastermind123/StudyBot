@@ -1,164 +1,208 @@
 # StudyBot
 
-An AI-powered study assistant that lets you upload a PDF and have a conversation about it. Ask questions, get summaries, generate notes, create practice problems, and more — all grounded in your document.
+An AI-powered study assistant that lets you upload course materials and interact with them through a smart chat interface. Built with React, Express, and the Anthropic Claude API.
 
-## Features
+**Live demo:** [study-bot-lovat.vercel.app](https://study-bot-lovat.vercel.app)
 
-- **PDF upload** — drag & drop or click to upload; text is extracted server-side
-- **Multi-workspace** — organise documents and chats into separate colour-coded workspaces
-- **Streaming responses** — assistant replies appear token-by-token via SSE
-- **Study tools** — one-click prompt chips for Summarize, Notes, Diagram, and Practice Problems
-- **Mermaid diagrams** — the assistant can render diagrams inline from markdown fenced blocks
-- **Persistent state** — workspaces, documents, and chat history survive page refreshes (localStorage)
-- **Prompt caching** — document text is sent with `cache_control` so repeat turns are faster and cheaper
+---
 
 ## Screenshots
 
-> _Add screenshots here once deployed._
+### Workspace Dashboard
+![Workspace Dashboard](screenshots/workspace.png)
+
+### AI Chat with Document Context
+![AI Chat](screenshots/chat.png)
+
+### Interactive Practice Quiz
+![Practice Quiz](screenshots/quiz.png)
+
+### Print-Ready Study Notes Export
+![Notes Export](screenshots/notes-export.png)
+
+---
+
+## Features
+
+**Workspaces** — Organize your studying by class. Create a workspace for Physics, Math, Chemistry, or any subject. Each workspace has its own documents, chats, and a custom accent color that themes the entire UI.
+
+**PDF Upload & AI Chat** — Upload a textbook chapter or lecture slides and ask anything about the material. StudyBot uses Claude as its AI backbone with prompt caching, so follow-up questions in the same session cost a fraction of a cent.
+
+**Study Tool Shortcuts** — One-click prompts for the most common study tasks:
+- **Summarize** — bullet-point summary of the document
+- **Notes** — structured study notes organized by topic
+- **Diagram** — Mermaid.js diagram illustrating a key concept
+- **Practice Problems** — configurable interactive quiz (see below)
+
+**Interactive Practice Quiz** — Generate multiple choice quizzes with a configurable number of questions and difficulty level (Easy / Medium / Hard). Questions render as a real quiz UI — select your answers, submit, and get instant grading with per-question explanations and a final score. No extra API calls needed after generation.
+
+**Print-Ready Notes Export** — Any assistant response can be exported as a clean, print-formatted page with a single click. Includes workspace name, document name, and date. Useful for open-note exams.
+
+**Mermaid Diagram Rendering** — When Claude returns a Mermaid diagram, it renders as an actual SVG diagram in the chat, not raw code.
+
+**Session History** — Every chat is saved to localStorage with its title, timestamp, and full message history. Sessions persist across browser refreshes and are organized per workspace.
+
+**Dynamic Accent Colors** — Each workspace has a user-chosen color (from presets or a custom color picker) that themes the sidebar, input focus ring, message bubbles, buttons, and section labels throughout the UI.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite |
+| Backend | Node.js, Express |
+| AI | Anthropic Claude API (claude-sonnet-4-20250514) |
+| PDF Parsing | pdf-parse |
+| Diagram Rendering | Mermaid.js |
+| Markdown Rendering | react-markdown |
+| Persistence | localStorage (client-side) |
+| Frontend Deploy | Vercel |
+| Backend Deploy | Railway |
+
+---
 
 ## Architecture
 
 ```
-┌─────────────────────┐        ┌──────────────────────────┐
-│  Client (React/Vite)│        │  Server (Express / Node) │
-│  Vercel             │        │  Render or Railway       │
-│                     │        │                          │
-│  src/               │  HTTPS │  src/                    │
-│  ├── App.jsx        │◄──────►│  ├── routes/             │
-│  ├── api.js         │  REST  │  │   ├── chat.js         │
-│  ├── components/    │  + SSE │  │   └── upload.js       │
-│  ├── hooks/         │        │  └── services/           │
-│  └── lib/           │        │      ├── claude.js       │
-│                     │        │      └── pdf.js          │
-└─────────────────────┘        └──────────────┬───────────┘
-                                              │
-                                     Anthropic Claude API
+StudyBot/
+├── client/                  # React + Vite SPA (deployed to Vercel)
+│   └── src/
+│       ├── components/      # UI components
+│       │   ├── Sidebar.jsx         # Workspace switcher + doc/chat lists
+│       │   ├── UploadZone.jsx      # Drag & drop PDF upload
+│       │   ├── ChatWindow.jsx      # Message list + auto-scroll
+│       │   ├── MessageBubble.jsx   # User / assistant message rows
+│       │   ├── MessageContent.jsx  # Markdown + Mermaid + Quiz detection
+│       │   ├── Mermaid.jsx         # Mermaid SVG renderer
+│       │   ├── Quiz.jsx            # Interactive multiple choice quiz
+│       │   ├── PromptChips.jsx     # Study tool shortcut buttons
+│       │   └── ChatInput.jsx       # Textarea + send
+│       ├── hooks/
+│       │   └── useWorkspaces.js    # Workspace state + localStorage sync
+│       ├── lib/
+│       │   ├── storage.js          # localStorage CRUD
+│       │   └── prompts.js          # Study tool prompt templates
+│       └── api.js                  # Fetch wrapper for Express API
+│
+└── server/                  # Express API (deployed to Railway)
+    └── src/
+        ├── app.js                  # Express app + middleware + routes
+        ├── routes/
+        │   ├── upload.js           # POST /api/upload (PDF extraction)
+        │   └── chat.js             # POST /api/chat (Claude API)
+        └── services/
+            ├── pdf.js              # Text extraction with pdf-parse
+            └── claude.js           # Claude API with prompt caching
 ```
 
-**API endpoints**
+**Key design decisions:**
+- The Anthropic API key lives exclusively on the Express server and is never referenced in the client bundle
+- Document text is sent as a cached system block, dramatically reducing per-message cost for follow-up questions
+- Workspace and chat state lives in localStorage — no database required for v1
+- Quiz grading and scoring happen entirely client-side after a single JSON generation call
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/health` | Liveness check |
-| `POST` | `/api/upload` | Upload a PDF, returns extracted text |
-| `POST` | `/api/chat` | Single-turn chat (non-streaming fallback) |
-| `POST` | `/api/chat/stream` | Streaming chat via SSE |
+---
 
 ## Local Development
 
 ### Prerequisites
-
 - Node.js 18+
-- An [Anthropic API key](https://console.anthropic.com/)
+- An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
 
-### 1. Clone and install
+### Setup
 
 ```bash
+# Clone the repo
 git clone https://github.com/CodingMastermind123/StudyBot.git
 cd StudyBot
 
 # Install server dependencies
-cd server && npm install
+cd server
+npm install
+cp .env.example .env
+# Add your ANTHROPIC_API_KEY to server/.env
 
 # Install client dependencies
-cd ../client && npm install
-```
-
-### 2. Configure the server
-
-```bash
-cd server
+cd ../client
+npm install
 cp .env.example .env
+# VITE_API_URL=http://localhost:3001 is already set in .env.example
 ```
 
-Open `.env` and fill in your API key:
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-PORT=8787
-ALLOWED_ORIGIN=http://localhost:5173
-CLAUDE_MODEL=claude-sonnet-4-20250514
-MAX_DOC_CHARS=200000
-```
-
-### 3. Run both servers
-
-Open two terminals:
+### Running locally
 
 ```bash
-# Terminal 1 — backend
-cd server && npm run dev
+# Terminal 1 — start the backend
+cd server
+npm run dev
 
-# Terminal 2 — frontend
-cd client && npm run dev
+# Terminal 2 — start the frontend
+cd client
+npm run dev
 ```
 
-Then open **http://localhost:5173** in your browser.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 4. Run tests
+### Environment Variables
 
-```bash
-cd server && npm test
-cd client && npm test
-```
+**server/.env**
 
-## Environment Variables
+| Variable | Description | Default |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
+| `PORT` | Port the Express server runs on | `3001` |
+| `ALLOWED_ORIGIN` | CORS origin (your frontend URL) | Required |
+| `CLAUDE_MODEL` | Anthropic model ID | `claude-sonnet-4-20250514` |
+| `MAX_DOC_CHARS` | Max characters extracted from PDF | `40000` |
 
-### Server (`server/.env`)
+**client/.env**
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | ✅ | — | Your Anthropic API key |
-| `PORT` | | `8787` | Port the Express server listens on |
-| `ALLOWED_ORIGIN` | | `http://localhost:5173` | Comma-separated allowed CORS origins |
-| `CLAUDE_MODEL` | | `claude-sonnet-4-20250514` | Claude model ID to use |
-| `MAX_DOC_CHARS` | | `200000` | Max characters extracted from a PDF |
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | URL of the Express backend |
 
-### Client (`client/.env` or Vercel environment)
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `VITE_API_URL` | ✅ (prod) | `http://localhost:8787` | Full URL of the deployed backend |
+---
 
 ## Deployment
 
+### Backend — Railway
+
+1. Create a new project on [Railway](https://railway.app) and connect your GitHub repo
+2. Set the root directory to `server`
+3. Add all variables from the table above under the Variables tab
+4. Go to Settings → Networking → Generate Domain and copy the URL
+
 ### Frontend — Vercel
 
-1. Import the repo into [Vercel](https://vercel.com/new).
-2. Set **Root Directory** to `client`.
-3. Framework preset: **Vite** (auto-detected).
-4. Add environment variable: `VITE_API_URL` → your backend URL (e.g. `https://studybot-api.onrender.com`).
-5. Deploy. The `client/vercel.json` SPA rewrite is already in place — all routes fall through to `index.html`.
+1. Import your repo on [Vercel](https://vercel.com)
+2. Set the root directory to `client`
+3. Add `VITE_API_URL` pointing to your Railway domain
+4. Deploy
 
-### Backend — Render
+Then update `ALLOWED_ORIGIN` in Railway to your Vercel domain and redeploy.
 
-1. Create a new **Web Service** on [Render](https://render.com).
-2. Connect the repo, set **Root Directory** to `server`.
-3. **Build command:** `npm install`
-4. **Start command:** `node src/index.js`
-5. Add environment variables:
-   - `ANTHROPIC_API_KEY` — your key
-   - `ALLOWED_ORIGIN` — your Vercel domain (e.g. `https://studybot.vercel.app`)
-   - `CLAUDE_MODEL`, `MAX_DOC_CHARS` (optional, see table above)
+Both platforms auto-deploy on every push to `main`.
 
-### Backend — Railway (alternative)
+---
 
-1. Create a new project, connect the repo.
-2. Set **Root Directory** to `server`.
-3. Railway auto-detects the `Procfile` (`web: node src/index.js`).
-4. Set the same environment variables as above.
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features including:
+- **v2** — RAG pipeline for full textbook uploads (LangChain.js + ChromaDB)
+- **v3** — Live PDF preview panel with page navigation
+- **v4** — Multi-user support with cloud sync (Supabase)
+
+---
 
 ## Security
 
-- The `ANTHROPIC_API_KEY` lives **only on the server** and is never sent to the client.
-- The client's built bundle is checked post-build: `grep` for `ANTHROPIC_API_KEY` or `sk-ant` must return nothing.
-- CORS is restricted to the origin(s) listed in `ALLOWED_ORIGIN`; unrecognised origins are rejected.
-- PDF uploads are size-limited (10 MB by default via multer) and validated by MIME type server-side.
+- The Anthropic API key is never sent to or bundled with the frontend
+- CORS is restricted to the configured `ALLOWED_ORIGIN`
+- PDF upload is validated for file type and size server-side
 
-## Known Limitations
+---
 
-- **Context cap** — very long documents are truncated at `MAX_DOC_CHARS` (default 200 000 characters, ~150 pages). Text beyond that is silently dropped.
-- **Scanned PDFs** — image-only PDFs yield no extractable text. A message is shown but the document cannot be queried.
-- **localStorage quota** — workspace data (including extracted text) is stored in the browser. Most browsers cap this at 5–10 MB; uploading many large documents may hit the limit. A quota warning banner appears when storage is nearly full.
-- **No authentication** — all workspaces are local to the browser. There is no user account system.
-- **Single-user** — the server holds no session state; it is stateless between requests.
+## Author
+
+Built by **Amrith Akshintala**
