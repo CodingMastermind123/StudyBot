@@ -143,10 +143,11 @@ export default function useWorkspaces() {
   // This prevents the second call (for the assistant reply) from overwriting the
   // user message and title that the first call already wrote.
   const appendMessage = useCallback(
-    (role, content) => {
+    (role, content, displayContent) => {
       const currentStore = storeRef.current;
       if (!currentStore.activeChatId) return;
       const now = Date.now();
+      const titleSource = displayContent || content;
       const nextWorkspaces = currentStore.workspaces.map((ws) => {
         const chatIdx = ws.chats.findIndex((c) => c.id === currentStore.activeChatId);
         if (chatIdx === -1) return ws;
@@ -154,13 +155,15 @@ export default function useWorkspaces() {
         const isFirstUserMsg =
           role === "user" && chat.messages.every((m) => m.role !== "user");
         const shouldSetTitle = isFirstUserMsg && chat.title === "New chat";
+        const msg = { role, content };
+        if (displayContent) msg.displayContent = displayContent;
         const updatedChat = {
           ...chat,
           title: shouldSetTitle
-            ? content.trim().slice(0, 40) + (content.trim().length > 40 ? "…" : "")
+            ? titleSource.trim().slice(0, 40) + (titleSource.trim().length > 40 ? "…" : "")
             : chat.title,
           updatedAt: now,
-          messages: [...chat.messages, { role, content }],
+          messages: [...chat.messages, msg],
         };
         const newChats = [...ws.chats];
         newChats[chatIdx] = updatedChat;

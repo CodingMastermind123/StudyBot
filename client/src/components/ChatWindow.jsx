@@ -37,7 +37,7 @@ function ChatIcon() {
   );
 }
 
-export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent, onAddDocument, onSend }) {
+export default function ChatWindow({ activeWorkspace, activeChat, isLoading, streamingContent, hideStreaming, onAddDocument, onSend }) {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -160,14 +160,16 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
           key={i}
           role={msg.role}
           content={msg.content}
+          displayContent={msg.displayContent}
           workspaceName={workspaceName}
           documentName={documentName}
           onSend={onSend}
         />
       ))}
 
-      {/* Typing dots: show while loading but before the first streaming token */}
-      {isLoading && !streamingContent && (
+      {/* Typing dots: show while waiting for first token, or for the entire
+          duration when hideStreaming is true (e.g. quiz JSON responses) */}
+      {isLoading && (!streamingContent || hideStreaming) && (
         <div className="message assistant">
           <div className="message-body">
             <div className="typing-indicator">
@@ -179,8 +181,8 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
         </div>
       )}
 
-      {/* Live streaming bubble: replaces typing dots once tokens start arriving */}
-      {streamingContent && (
+      {/* Live streaming bubble — hidden when hideStreaming suppresses it */}
+      {streamingContent && !hideStreaming && (
         <MessageBubble role="assistant" content={streamingContent} />
       )}
 

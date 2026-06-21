@@ -54,7 +54,10 @@ export default function Quiz({ questions, onSend }) {
   function handleNewQuiz() {
     if (!onSend) return;
     const practice = PROMPTS.find((p) => p.id === PRACTICE_ID);
-    onSend(practice.buildPrompt(questions.length, "Medium"));
+    onSend(practice.buildPrompt(questions.length, "Medium"), {
+      displayContent: practice.buildDisplayLabel(questions.length, "Medium"),
+      hideStreaming: true,
+    });
   }
 
   const pct = submitted ? (score / questions.length) * 100 : 0;

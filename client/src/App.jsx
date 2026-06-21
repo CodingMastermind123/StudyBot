@@ -37,9 +37,8 @@ export default function App() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [sendError, setSendError] = useState(null);
-  // streamingContent: null = not streaming; "" = started, waiting for first token;
-  // non-empty string = tokens arriving and being shown live in the chat window.
   const [streamingContent, setStreamingContent] = useState(null);
+  const [hideStreaming, setHideStreaming] = useState(false);
 
   // ── Main-area drag-drop ────────────────────────────────────────────────────
   // Active when the workspace exists but has no documents yet (and no active chat).
@@ -66,14 +65,16 @@ export default function App() {
   }
 
   // ── Shared chat send handler ───────────────────────────────────────────────
-  async function handleSend(content) {
+  async function handleSend(content, opts = {}) {
     if (!activeChat || isLoading) return;
-    appendMessage("user", content);
+    const { displayContent, hideStreaming: hide } = opts;
+    appendMessage("user", content, displayContent);
     const outgoing = [...activeChat.messages, { role: "user", content }];
     const documentText = activeDocument?.text ?? null;
     setIsLoading(true);
     setSendError(null);
-    setStreamingContent(""); // mark streaming as started (shows typing dots until first token)
+    setStreamingContent("");
+    if (hide) setHideStreaming(true);
 
     let accumulated = "";
     try {
@@ -82,18 +83,17 @@ export default function App() {
         documentText,
         onToken: (token) => {
           accumulated += token;
-          setStreamingContent(accumulated);
+          if (!hide) setStreamingContent(accumulated);
         },
       });
-      // Persist the complete reply to the store once streaming is done
       appendMessage("assistant", accumulated);
     } catch (err) {
-      // If streaming produced partial content before the error, still save it
       if (accumulated) appendMessage("assistant", accumulated);
       setSendError(err.message || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
       setStreamingContent(null);
+      setHideStreaming(false);
     }
   }
 
@@ -181,6 +181,7 @@ export default function App() {
           activeChat={activeChat}
           isLoading={isLoading}
           streamingContent={streamingContent}
+          hideStreaming={hideStreaming}
           onAddDocument={addDocument}
           onSend={handleSend}
         />
