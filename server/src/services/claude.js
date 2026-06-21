@@ -2,9 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Model is configurable via CLAUDE_MODEL env var.
-// Default value below should be verified/updated to a current Sonnet model before deployment.
-const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
+const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
 
 /**
  * Send a conversation to Claude and return the assistant's reply text.
