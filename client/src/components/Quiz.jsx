@@ -27,28 +27,18 @@ function XIcon() {
 
 export default function Quiz({ questions, onSend }) {
   const [answers, setAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [score, setScore] = useState(0);
-
-  const answeredCount = Object.keys(answers).length;
-  const allAnswered = answeredCount === questions.length;
+  const [checked, setChecked] = useState({});
 
   function handleSelect(questionId, choice) {
-    if (submitted) return;
+    if (checked[questionId]) return;
     setAnswers((prev) => ({ ...prev, [questionId]: choice }));
   }
 
-  function handleSubmit() {
-    if (!allAnswered) return;
-    const correct = questions.filter((q) => answers[q.id] === q.correct).length;
-    setScore(correct);
-    setSubmitted(true);
-  }
-
-  function handleRetry() {
-    setAnswers({});
-    setSubmitted(false);
-    setScore(0);
+  function handleCheck(questionId) {
+    if (!answers[questionId] || checked[questionId]) return;
+    const q = questions.find((qq) => qq.id === questionId);
+    const isCorrect = answers[questionId] === q.correct;
+    setChecked((prev) => ({ ...prev, [questionId]: isCorrect ? "correct" : "wrong" }));
   }
 
   function handleNewQuiz() {
@@ -60,112 +50,93 @@ export default function Quiz({ questions, onSend }) {
     });
   }
 
-  const pct = submitted ? (score / questions.length) * 100 : 0;
-  const scoreColor = pct >= 70 ? "#4caf50" : pct >= 50 ? "#f59e0b" : "#e05252";
+  const checkedCount = Object.keys(checked).length;
+  const correctCount = Object.values(checked).filter((v) => v === "correct").length;
 
   return (
-    <div className="quiz">
-      {/* ── Post-submit: score banner ── */}
-      {submitted && (
-        <div
-          className="quiz-score-banner"
-          style={{ borderColor: scoreColor, background: `${scoreColor}18` }}
-        >
-          <span className="quiz-score-text" style={{ color: scoreColor }}>
-            You got {score}/{questions.length} correct
+    <div className="quiz-container">
+      {/* ── Header card ── */}
+      <div className="quiz-header-card">
+        <div className="quiz-header-left">
+          <h2 className="quiz-header-title">Practice Quiz</h2>
+          <span className="quiz-header-sub">
+            {questions.length} QUESTION{questions.length !== 1 ? "S" : ""}
           </span>
-          <div className="quiz-score-actions">
-            <button className="quiz-btn-secondary" onClick={handleRetry}>
-              Retry
-            </button>
-            {onSend && (
-              <button className="quiz-btn-primary" onClick={handleNewQuiz}>
-                New Quiz
-              </button>
-            )}
-          </div>
         </div>
-      )}
-
-      {/* ── Pre-submit: progress bar ── */}
-      {!submitted && (
-        <div className="quiz-progress">
-          <span className="quiz-progress-label">
-            {answeredCount}/{questions.length} answered
+        {checkedCount > 0 && (
+          <span className="quiz-header-score">
+            {correctCount} / {checkedCount} correct
           </span>
-          <div className="quiz-progress-track">
-            <div
-              className="quiz-progress-fill"
-              style={{ width: `${(answeredCount / questions.length) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* ── Questions ── */}
+      {/* ── Question cards ── */}
       {questions.map((q, qi) => {
         const selected = answers[q.id];
+        const result = checked[q.id];
+        const isChecked = !!result;
 
         return (
-          <div
-            key={q.id}
-            className={`quiz-question${qi < questions.length - 1 ? " quiz-question--divided" : ""}`}
-          >
-            <p className="quiz-question-text">
-              <span className="quiz-q-num">{q.id}.</span>{" "}{q.question}
-            </p>
+          <div key={q.id} className="quiz-card">
+            <span className="quiz-q-label">
+              QUESTION {qi + 1} OF {questions.length}
+            </span>
+            <p className="quiz-question-text">{q.question}</p>
 
             <div className="quiz-choices">
               {CHOICE_KEYS.map((key) => {
                 const isSelected = selected === key;
-                const isCorrect = submitted && key === q.correct;
-                const isWrongPick = submitted && isSelected && key !== q.correct;
-                const isDimmed = submitted && !isSelected && key !== q.correct;
+                const isCorrectAnswer = isChecked && key === q.correct;
+                const isWrongPick = isChecked && isSelected && key !== q.correct;
+                const isDimmed = isChecked && !isSelected && key !== q.correct;
 
                 let cls = "quiz-choice";
-                if (!submitted && isSelected) cls += " quiz-choice--selected";
-                if (isCorrect)               cls += " quiz-choice--correct";
-                if (isWrongPick)             cls += " quiz-choice--wrong";
-                if (isDimmed)                cls += " quiz-choice--dimmed";
+                if (!isChecked && isSelected) cls += " quiz-choice--selected";
+                if (isCorrectAnswer)          cls += " quiz-choice--correct";
+                if (isWrongPick)              cls += " quiz-choice--wrong";
+                if (isDimmed)                 cls += " quiz-choice--dimmed";
 
                 return (
                   <button
                     key={key}
                     className={cls}
                     onClick={() => handleSelect(q.id, key)}
-                    disabled={submitted}
+                    disabled={isChecked}
                   >
-                    <span className="quiz-choice-indicator">
-                      {isCorrect   && <CheckIcon />}
-                      {isWrongPick && <XIcon />}
-                      {!submitted && isSelected && <span className="quiz-dot" />}
-                    </span>
                     <span className="quiz-choice-key">{key}</span>
                     <span className="quiz-choice-text">{q.choices[key]}</span>
+                    {isCorrectAnswer && <span className="quiz-choice-icon quiz-choice-icon--correct"><CheckIcon /></span>}
+                    {isWrongPick && <span className="quiz-choice-icon quiz-choice-icon--wrong"><XIcon /></span>}
                   </button>
                 );
               })}
             </div>
 
-            {submitted && q.explanation && (
-              <p className="quiz-explanation">{q.explanation}</p>
+            {isChecked && q.explanation && (
+              <div className="quiz-explanation-box">
+                <span className="quiz-explanation-label">EXPLANATION</span>
+                <p className="quiz-explanation-text">{q.explanation}</p>
+              </div>
+            )}
+
+            {!isChecked && (
+              <button
+                className="quiz-check-btn"
+                disabled={!selected}
+                onClick={() => handleCheck(q.id)}
+              >
+                Check Answer
+              </button>
+            )}
+
+            {isChecked && (
+              <span className={`quiz-result-pill quiz-result-pill--${result}`}>
+                {result === "correct" ? <><CheckIcon /> Correct!</> : <><XIcon /> Incorrect</>}
+              </span>
             )}
           </div>
         );
       })}
-
-      {/* ── Pre-submit: submit button ── */}
-      {!submitted && (
-        <div className="quiz-footer">
-          <button
-            className="quiz-submit-btn"
-            disabled={!allAnswered}
-            onClick={handleSubmit}
-          >
-            Submit Quiz
-          </button>
-        </div>
-      )}
     </div>
   );
 }
