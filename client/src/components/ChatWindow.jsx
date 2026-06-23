@@ -161,6 +161,7 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
           role={msg.role}
           content={msg.content}
           displayContent={msg.displayContent}
+          timestamp={msg.createdAt}
           workspaceName={workspaceName}
           documentName={documentName}
           onSend={onSend}

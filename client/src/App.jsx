@@ -186,19 +186,19 @@ export default function App() {
           onSend={handleSend}
         />
 
-        {/* Input area — chips + textarea share the same rounded container */}
+        {/* Input area — chips sit above the input box */}
         <div className="input-area">
           {sendError && (
             <p className="banner error" style={{ marginBottom: "var(--space-2)" }}>
               {sendError}
             </p>
           )}
+          <PromptChips
+            activeChat={activeChat}
+            isLoading={isLoading}
+            onSend={handleSend}
+          />
           <div className="input-wrapper">
-            <PromptChips
-              activeChat={activeChat}
-              isLoading={isLoading}
-              onSend={handleSend}
-            />
             <ChatInput
               activeChat={activeChat}
               isLoading={isLoading}

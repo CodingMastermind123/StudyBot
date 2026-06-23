@@ -59,7 +59,7 @@ export default function DocumentList({
         <ul className="doc-list">
           {workspace.documents.map((doc) => (
             <li key={doc.id} className="doc-item">
-              <span className="doc-item-icon">📄</span>
+              <span className="doc-item-icon">PDF</span>
               <span className="doc-item-name" title={doc.name}>
                 {doc.name}
               </span>

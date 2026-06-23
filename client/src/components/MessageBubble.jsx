@@ -1,5 +1,16 @@
 import MessageContent from "./MessageContent.jsx";
 
+function relativeTime(ts) {
+  if (!ts) return null;
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 function esc(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -184,22 +195,41 @@ function PrintIcon() {
   );
 }
 
-export default function MessageBubble({ role, content, displayContent, workspaceName, documentName, onSend }) {
+export default function MessageBubble({ role, content, displayContent, workspaceName, documentName, timestamp, onSend }) {
   const renderContent = role === "user" && displayContent ? displayContent : content;
+
+  if (role === "user") {
+    return (
+      <div className="message user">
+        <div className="message-body">
+          &ldquo;{renderContent}&rdquo;
+        </div>
+        {timestamp && (
+          <span className="message-timestamp">&mdash; {relativeTime(timestamp)}</span>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={`message ${role}`}>
+    <div className="message assistant">
+      <div className="message-label-row">
+        <span>STUDYBOT</span>
+        <span className="message-label-divider" />
+      </div>
       <div className="message-body">
         <MessageContent role={role} content={renderContent} onSend={onSend} />
       </div>
-      {role === "assistant" && (
-        <button
-          className="message-export-btn"
-          title="Export"
-          onClick={() => openExportTab(content, { workspaceName, documentName })}
-        >
-          <PrintIcon />
-        </button>
+      {documentName && (
+        <span className="message-source">From {documentName}</span>
       )}
+      <button
+        className="message-export-btn"
+        title="Export"
+        onClick={() => openExportTab(content, { workspaceName, documentName })}
+      >
+        <PrintIcon />
+      </button>
     </div>
   );
 }

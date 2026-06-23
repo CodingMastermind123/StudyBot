@@ -57,6 +57,8 @@ export default function WorkspaceSwitcher({
 
   return (
     <div className="workspace-switcher">
+      <p className="sidebar-section-label ws-section-label">Your Classes</p>
+
       {workspaces.length === 0 && !showForm && (
         <p className="ws-empty-hint">Create your first workspace to get started.</p>
       )}
@@ -78,8 +80,20 @@ export default function WorkspaceSwitcher({
                 className={`workspace-pill${isActive ? " active" : ""}`}
                 onClick={() => onSelect(ws.id)}
               >
-                <span className="ws-color-dot" style={{ backgroundColor: color.value }} />
-                <span className="ws-pill-name">{ws.name}</span>
+                <span className="ws-color-dot" style={{ backgroundColor: color.value }}>
+                  {ws.name.charAt(0).toUpperCase()}
+                </span>
+                <div className="ws-pill-body">
+                  <span className="ws-pill-name">{ws.name}</span>
+                  {isActive && (
+                    <span className="ws-pill-meta">
+                      {ws.documents.length} doc{ws.documents.length !== 1 ? "s" : ""}
+                      {" · "}
+                      {ws.chats.length} thread{ws.chats.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+                {isActive && <span className="ws-active-dot" style={{ backgroundColor: color.value }} />}
                 <button
                   className={`ws-context-btn${isMenuOpen ? " open" : ""}`}
                   title="Workspace options"
@@ -204,7 +218,7 @@ export default function WorkspaceSwitcher({
         <NewWorkspaceForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
       ) : (
         <button className="btn-new-workspace" onClick={() => setShowForm(true)}>
-          + New Workspace
+          + Add a class
         </button>
       )}
     </div>

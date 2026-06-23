@@ -155,7 +155,7 @@ export default function useWorkspaces() {
         const isFirstUserMsg =
           role === "user" && chat.messages.every((m) => m.role !== "user");
         const shouldSetTitle = isFirstUserMsg && chat.title === "New chat";
-        const msg = { role, content };
+        const msg = { role, content, createdAt: now };
         if (displayContent) msg.displayContent = displayContent;
         const updatedChat = {
           ...chat,
