@@ -1818,13 +1818,37 @@ pre {
   color: var(--workspace-accent);
 }
 
+.quiz-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
 .quiz-header-score {
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
-  padding-top: 4px;
+}
+
+.quiz-retry-btn {
+  padding: 6px 16px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.quiz-retry-btn:hover {
+  background: var(--color-accent-hover);
 }
 
 /* Individual question card */

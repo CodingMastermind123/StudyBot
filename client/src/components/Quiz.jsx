@@ -52,6 +52,7 @@ export default function Quiz({ questions, onSend }) {
 
   const checkedCount = Object.keys(checked).length;
   const correctCount = Object.values(checked).filter((v) => v === "correct").length;
+  const allChecked = checkedCount === questions.length;
 
   return (
     <div className="quiz-container">
@@ -63,11 +64,18 @@ export default function Quiz({ questions, onSend }) {
             {questions.length} QUESTION{questions.length !== 1 ? "S" : ""}
           </span>
         </div>
-        {checkedCount > 0 && (
-          <span className="quiz-header-score">
-            {correctCount} / {checkedCount} correct
-          </span>
-        )}
+        <div className="quiz-header-right">
+          {checkedCount > 0 && (
+            <span className="quiz-header-score">
+              {correctCount} / {checkedCount} correct
+            </span>
+          )}
+          {allChecked && onSend && (
+            <button className="quiz-retry-btn" onClick={handleNewQuiz}>
+              New Quiz
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Question cards ── */}
