@@ -40,7 +40,9 @@ An AI-powered study assistant that lets you upload course materials and interact
 
 **Mermaid Diagram Rendering** — When Claude returns a Mermaid diagram, it renders as an actual SVG diagram in the chat, not raw code.
 
-**Session History** — Every chat is saved to localStorage with its title, timestamp, and full message history. Sessions persist across browser refreshes and are organized per workspace.
+**User Accounts** — Sign up with email/password or Google OAuth. Your data is stored in Supabase with Row Level Security, so each user can only ever see their own workspaces, documents, and chats.
+
+**Session History** — Every chat is saved to Supabase with its title, timestamp, and full message history. Sessions persist across browser refreshes and devices, organized per workspace.
 
 **Dynamic Accent Colors** — Each workspace has a user-chosen color (from presets or a custom color picker) that themes the sidebar, input focus ring, message bubbles, buttons, and section labels throughout the UI.
 
@@ -56,7 +58,8 @@ An AI-powered study assistant that lets you upload course materials and interact
 | PDF Parsing | pdf-parse |
 | Diagram Rendering | Mermaid.js |
 | Markdown Rendering | react-markdown |
-| Persistence | localStorage (client-side) |
+| Auth | Supabase Auth (email/password + Google OAuth) |
+| Database | Supabase (Postgres + Row Level Security) |
 | Frontend Deploy | Vercel |
 | Backend Deploy | Railway |
 
@@ -69,8 +72,8 @@ StudyBot/
 ├── client/                  # React + Vite SPA (deployed to Vercel)
 │   └── src/
 │       ├── components/      # UI components
+│       │   ├── AuthScreen.jsx      # Login / signup / Google OAuth
 │       │   ├── Sidebar.jsx         # Workspace switcher + doc/chat lists
-│       │   ├── UploadZone.jsx      # Drag & drop PDF upload
 │       │   ├── ChatWindow.jsx      # Message list + auto-scroll
 │       │   ├── MessageBubble.jsx   # User / assistant message rows
 │       │   ├── MessageContent.jsx  # Markdown + Mermaid + Quiz detection
@@ -78,28 +81,38 @@ StudyBot/
 │       │   ├── Quiz.jsx            # Interactive multiple choice quiz
 │       │   ├── PromptChips.jsx     # Study tool shortcut buttons
 │       │   └── ChatInput.jsx       # Textarea + send
+│       ├── context/
+│       │   └── AuthContext.jsx     # Supabase Auth provider + useAuth hook
 │       ├── hooks/
-│       │   └── useWorkspaces.js    # Workspace state + localStorage sync
+│       │   └── useWorkspaces.js    # Workspace state + Supabase sync
 │       ├── lib/
-│       │   ├── storage.js          # localStorage CRUD
+│       │   ├── supabase.js         # Supabase client singleton
+│       │   ├── db.js               # Supabase data-access layer (CRUD + hydration)
+│       │   ├── storage.js          # Quota helpers (doc size warnings)
 │       │   └── prompts.js          # Study tool prompt templates
 │       └── api.js                  # Fetch wrapper for Express API
 │
-└── server/                  # Express API (deployed to Railway)
-    └── src/
-        ├── app.js                  # Express app + middleware + routes
-        ├── routes/
-        │   ├── upload.js           # POST /api/upload (PDF extraction)
-        │   └── chat.js             # POST /api/chat (Claude API)
-        └── services/
-            ├── pdf.js              # Text extraction with pdf-parse
-            └── claude.js           # Claude API with prompt caching
+├── server/                  # Express API (deployed to Railway)
+│   └── src/
+│       ├── app.js                  # Express app + middleware + routes
+│       ├── routes/
+│       │   ├── upload.js           # POST /api/upload (PDF extraction)
+│       │   └── chat.js             # POST /api/chat (Claude API)
+│       └── services/
+│           ├── pdf.js              # Text extraction with pdf-parse
+│           └── claude.js           # Claude API with prompt caching
+│
+└── supabase/
+    ├── migrations/
+    │   └── 0001_init.sql           # Tables, indexes, RLS policies
+    └── README.md                   # Dashboard setup runbook
 ```
 
 **Key design decisions:**
 - The Anthropic API key lives exclusively on the Express server and is never referenced in the client bundle
 - Document text is sent as a cached system block, dramatically reducing per-message cost for follow-up questions
-- Workspace and chat state lives in localStorage — no database required for v1
+- All user data (workspaces, documents, chats, messages) is stored in Supabase Postgres with Row Level Security — data CRUD goes client → Supabase directly, while Claude API calls route through Express
+- The Supabase anon key is safe to expose in the client bundle; RLS policies enforce per-user isolation at the database level
 - Quiz grading and scoring happen entirely client-side after a single JSON generation call
 
 ---
@@ -109,6 +122,7 @@ StudyBot/
 ### Prerequisites
 - Node.js 18+
 - An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
+- A Supabase project (free tier works — see [`supabase/README.md`](supabase/README.md) for setup)
 
 ### Setup
 
@@ -127,7 +141,8 @@ cp .env.example .env
 cd ../client
 npm install
 cp .env.example .env
-# VITE_API_URL=http://localhost:3001 is already set in .env.example
+# Add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to client/.env
+# VITE_API_URL=http://localhost:8787 is already set
 ```
 
 ### Running locally
@@ -161,6 +176,10 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | Variable | Description |
 |---|---|
 | `VITE_API_URL` | URL of the Express backend |
+| `VITE_SUPABASE_URL` | Supabase project URL (from Project Settings → API) |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key (safe to expose — RLS is the security boundary) |
+
+> **Note:** The Supabase **service-role key** is NOT used anywhere and must never be placed in the client.
 
 ---
 
@@ -173,14 +192,21 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 3. Add all variables from the table above under the Variables tab
 4. Go to Settings → Networking → Generate Domain and copy the URL
 
+### Supabase
+
+See [`supabase/README.md`](supabase/README.md) for the full setup runbook (project creation, running the migration SQL, configuring Google OAuth, and setting redirect URLs).
+
 ### Frontend — Vercel
 
 1. Import your repo on [Vercel](https://vercel.com)
 2. Set the root directory to `client`
-3. Add `VITE_API_URL` pointing to your Railway domain
+3. Add environment variables:
+   - `VITE_API_URL` — your Railway domain
+   - `VITE_SUPABASE_URL` — your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` — your Supabase anon/public key
 4. Deploy
 
-Then update `ALLOWED_ORIGIN` in Railway to your Vercel domain and redeploy.
+Then update `ALLOWED_ORIGIN` in Railway to your Vercel domain and redeploy. Railway needs **no** new environment variables for the Supabase migration.
 
 Both platforms auto-deploy on every push to `main`.
 
@@ -191,7 +217,6 @@ Both platforms auto-deploy on every push to `main`.
 See [ROADMAP.md](ROADMAP.md) for planned features including:
 - **v2** — RAG pipeline for full textbook uploads (LangChain.js + ChromaDB)
 - **v3** — Live PDF preview panel with page navigation
-- **v4** — Multi-user support with cloud sync (Supabase)
 
 ---
 
@@ -200,6 +225,9 @@ See [ROADMAP.md](ROADMAP.md) for planned features including:
 - The Anthropic API key is never sent to or bundled with the frontend
 - CORS is restricted to the configured `ALLOWED_ORIGIN`
 - PDF upload is validated for file type and size server-side
+- All user data is protected by Supabase Row Level Security — each table enforces `user_id = auth.uid()` on SELECT, INSERT, UPDATE, and DELETE, guaranteeing per-user isolation at the database level
+- Only the Supabase anon (public) key is used in the client; the service-role key is never referenced
+- **Future hardening (optional):** The Express Claude proxy currently accepts unauthenticated requests. To lock it down, the client could send the Supabase access token as `Authorization: Bearer` and Express would verify it with the project's JWT secret (`SUPABASE_JWT_SECRET`). This is not required because the proxy holds no user data and RLS protects all data access
 
 ---
 

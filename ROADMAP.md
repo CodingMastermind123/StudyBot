@@ -1,6 +1,6 @@
 # StudyBot Roadmap
 
-## v1 (Current)
+## v1
 - [x] Workspace-based organization (multiple classes/subjects)
 - [x] PDF upload and text extraction
 - [x] AI chat powered by Claude API
@@ -8,11 +8,18 @@
 - [x] Mermaid diagram rendering
 - [x] Session history per workspace
 - [x] Dynamic workspace accent colors
-- [x] localStorage persistence
 
-## v2 — RAG Pipeline
-The biggest planned upgrade. Instead of truncating large documents to fit 
-Claude's context window, v2 will implement a proper Retrieval-Augmented 
+## v2a — Auth + Cloud Storage (Current)
+- [x] User accounts with email/password and Google OAuth (Supabase Auth)
+- [x] All data (workspaces, documents, chats, messages) stored in Supabase Postgres
+- [x] Row Level Security for per-user data isolation
+- [x] Optimistic UI with async persistence (feels instant like localStorage)
+- [x] Session persistence across devices and browsers
+- [x] Replaced localStorage entirely
+
+## v2b — RAG Pipeline
+The next major upgrade. Instead of truncating large documents to fit 
+Claude's context window, v2b will implement a proper Retrieval-Augmented 
 Generation pipeline:
 - Upload an entire textbook once (500+ pages)
 - Document gets chunked and embedded as vectors on the backend
@@ -25,10 +32,3 @@ Generation pipeline:
 - Ask Claude to "go to chapter 5" and the preview navigates there
 - Powered by react-pdf
 - Page sync between chat references and preview position
-
-## v4 — Multi-user / Cloud Sync
-- User accounts and authentication (Clerk or Supabase Auth)
-- Workspaces and chat history synced to the cloud (Supabase PostgreSQL)
-- Access your workspaces from any device or browser
-- PDF storage in Supabase Storage (no re-uploading)
-- Replaces localStorage entirely
