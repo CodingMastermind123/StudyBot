@@ -43,9 +43,24 @@ alter table documents enable row level security;
 create policy "documents_select" on documents for select
   using (user_id = auth.uid());
 create policy "documents_insert" on documents for insert
-  with check (user_id = auth.uid());
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from workspaces
+      where workspaces.id = documents.workspace_id
+        and workspaces.user_id = auth.uid()
+    )
+  );
 create policy "documents_update" on documents for update
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from workspaces
+      where workspaces.id = documents.workspace_id
+        and workspaces.user_id = auth.uid()
+    )
+  );
 create policy "documents_delete" on documents for delete
   using (user_id = auth.uid());
 
@@ -69,9 +84,42 @@ alter table chats enable row level security;
 create policy "chats_select" on chats for select
   using (user_id = auth.uid());
 create policy "chats_insert" on chats for insert
-  with check (user_id = auth.uid());
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from workspaces
+      where workspaces.id = chats.workspace_id
+        and workspaces.user_id = auth.uid()
+    )
+    and (
+      document_id is null
+      or exists (
+        select 1 from documents
+        where documents.id = chats.document_id
+          and documents.workspace_id = chats.workspace_id
+          and documents.user_id = auth.uid()
+      )
+    )
+  );
 create policy "chats_update" on chats for update
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from workspaces
+      where workspaces.id = chats.workspace_id
+        and workspaces.user_id = auth.uid()
+    )
+    and (
+      document_id is null
+      or exists (
+        select 1 from documents
+        where documents.id = chats.document_id
+          and documents.workspace_id = chats.workspace_id
+          and documents.user_id = auth.uid()
+      )
+    )
+  );
 create policy "chats_delete" on chats for delete
   using (user_id = auth.uid());
 
@@ -94,8 +142,23 @@ alter table messages enable row level security;
 create policy "messages_select" on messages for select
   using (user_id = auth.uid());
 create policy "messages_insert" on messages for insert
-  with check (user_id = auth.uid());
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from chats
+      where chats.id = messages.chat_id
+        and chats.user_id = auth.uid()
+    )
+  );
 create policy "messages_update" on messages for update
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from chats
+      where chats.id = messages.chat_id
+        and chats.user_id = auth.uid()
+    )
+  );
 create policy "messages_delete" on messages for delete
   using (user_id = auth.uid());

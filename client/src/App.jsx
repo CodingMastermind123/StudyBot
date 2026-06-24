@@ -17,6 +17,13 @@ function hexRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+function toClaudeMessage(message) {
+  return {
+    role: message.role,
+    content: message.content,
+  };
+}
+
 export default function App() {
   const { session, loading } = useAuth();
 
@@ -90,7 +97,10 @@ function AppShell() {
     if (!activeChat || isLoading) return;
     const { displayContent, hideStreaming: hide } = opts;
     appendMessage("user", content, displayContent);
-    const outgoing = [...activeChat.messages, { role: "user", content }];
+    const outgoing = [
+      ...activeChat.messages.map(toClaudeMessage),
+      { role: "user", content },
+    ];
     const documentText = activeDocument?.text ?? null;
     setIsLoading(true);
     setSendError(null);

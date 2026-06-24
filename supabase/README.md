@@ -32,6 +32,11 @@ free Supabase account at [supabase.com](https://supabase.com).
 4. Verify in **Table Editor** that four tables exist: `workspaces`, `documents`, `chats`, `messages`.
 5. Verify in **Authentication → Policies** (or each table's RLS tab) that every table shows **RLS enabled** with four policies (select, insert, update, delete).
 
+If you already ran `0001_init.sql` before `0002_harden_child_rls.sql` existed, run
+[`migrations/0002_harden_child_rls.sql`](migrations/0002_harden_child_rls.sql) once.
+It tightens child-table insert/update policies so documents, chats, and messages can
+only reference parent rows owned by the same authenticated user.
+
 ## 4. Enable Email Auth
 
 1. Go to **Authentication → Providers → Email**.
