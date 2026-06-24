@@ -1,35 +1,77 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useAuth } from "../context/AuthContext.jsx";
+import { isOverDocLimit } from "../lib/storage.js";
 import {
-  loadStore,
-  saveStore,
-  newId,
-  isOverDocLimit,
-  StorageQuotaError,
-} from "../lib/storage.js";
+  fetchStore,
+  insertWorkspace,
+  updateWorkspace,
+  deleteWorkspaceRow,
+  insertDocument,
+  deleteDocumentRow,
+  insertChat,
+  updateChat,
+  deleteChatRow,
+  insertMessage,
+} from "../lib/db.js";
+
+function emptyStore() {
+  return { workspaces: [], activeWorkspaceId: null, activeChatId: null };
+}
 
 export default function useWorkspaces() {
-  const [store, setStore] = useState(() => loadStore());
-  const [quotaError, setQuotaError] = useState(null);
+  const { user } = useAuth();
+  const [store, setStore] = useState(emptyStore);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Always-current ref so callbacks don't capture stale store snapshots.
   const storeRef = useRef(store);
   storeRef.current = store;
 
-  // Persist a new store value; surfaces quota failures via quotaError state
-  // instead of letting them crash a render.
-  const persist = useCallback((nextStore) => {
-    setStore(nextStore);
-    try {
-      saveStore(nextStore);
-      setQuotaError(null);
-    } catch (err) {
-      if (err instanceof StorageQuotaError) {
-        setQuotaError(err.message);
-      } else {
-        throw err;
-      }
+  // Track which user we've hydrated for to avoid double-fetch under StrictMode
+  const hydratedForRef = useRef(null);
+
+  useEffect(() => {
+    if (!user) {
+      setStore(emptyStore());
+      setLoading(false);
+      hydratedForRef.current = null;
+      return;
     }
-  }, []);
+    if (hydratedForRef.current === user.id) return;
+    hydratedForRef.current = user.id;
+
+    setLoading(true);
+    fetchStore(user.id)
+      .then((data) => {
+        const first = data.workspaces[0];
+        const latestChat = first?.chats.length
+          ? first.chats.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b))
+          : null;
+        setStore({
+          ...data,
+          activeWorkspaceId: first?.id ?? null,
+          activeChatId: latestChat?.id ?? null,
+        });
+      })
+      .catch((err) => setError("Couldn't load your data — check your connection."))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  // Optimistic persist: update local state immediately, fire DB write in background.
+  // On failure, roll back and surface error.
+  const persist = useCallback(
+    (nextStore, dbWrite) => {
+      const prev = storeRef.current;
+      setStore(nextStore);
+      if (dbWrite) {
+        dbWrite().catch(() => {
+          setStore(prev);
+          setError("Couldn't save your changes — check your connection and try again.");
+        });
+      }
+    },
+    []
+  );
 
   // ─── Derived selectors ──────────────────────────────────────────────────────
 
@@ -48,7 +90,7 @@ export default function useWorkspaces() {
 
   const createWorkspace = useCallback(
     ({ name, color }) => {
-      const id = newId();
+      const id = crypto.randomUUID();
       const workspace = {
         id,
         name: name.trim(),
@@ -57,58 +99,62 @@ export default function useWorkspaces() {
         documents: [],
         chats: [],
       };
-      persist({
-        ...store,
-        workspaces: [...store.workspaces, workspace],
-        activeWorkspaceId: id,
-        activeChatId: null,
-      });
+      persist(
+        {
+          ...storeRef.current,
+          workspaces: [...storeRef.current.workspaces, workspace],
+          activeWorkspaceId: id,
+          activeChatId: null,
+        },
+        () => insertWorkspace({ id, userId: user.id, name: name.trim(), color })
+      );
       return id;
     },
-    [store, persist]
+    [user, persist]
   );
 
   const selectWorkspace = useCallback(
     (id) => {
-      const ws = store.workspaces.find((w) => w.id === id);
+      const ws = storeRef.current.workspaces.find((w) => w.id === id);
       if (!ws) return;
-      // Pick the most-recently-updated chat in the new workspace, or null
       const latestChat =
         ws.chats.length > 0
           ? ws.chats.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b))
           : null;
-      persist({
-        ...store,
+      setStore({
+        ...storeRef.current,
         activeWorkspaceId: id,
         activeChatId: latestChat?.id ?? null,
       });
     },
-    [store, persist]
+    []
   );
 
   const addDocument = useCallback(
     (workspaceId, { name, charCount, text }) => {
-      const docId = newId();
+      const docId = crypto.randomUUID();
       const doc = { id: docId, name, charCount, text, uploadedAt: Date.now() };
-      const nextWorkspaces = store.workspaces.map((ws) => {
+      const nextWorkspaces = storeRef.current.workspaces.map((ws) => {
         if (ws.id !== workspaceId) return ws;
         return { ...ws, documents: [...ws.documents, doc] };
       });
       const updatedWs = nextWorkspaces.find((w) => w.id === workspaceId);
       const overLimit = updatedWs ? isOverDocLimit(updatedWs) : false;
-      persist({ ...store, workspaces: nextWorkspaces });
+      persist(
+        { ...storeRef.current, workspaces: nextWorkspaces },
+        () => insertDocument({ id: docId, workspaceId, userId: user.id, name, charCount, text })
+      );
       return { docId, overLimit };
     },
-    [store, persist]
+    [user, persist]
   );
 
   const createChat = useCallback(
     (workspaceId, documentId) => {
-      const ws = store.workspaces.find((w) => w.id === workspaceId);
+      const ws = storeRef.current.workspaces.find((w) => w.id === workspaceId);
       if (!ws) return null;
-      // Guard: documentId must belong to this workspace
       if (!ws.documents.find((d) => d.id === documentId)) return null;
-      const chatId = newId();
+      const chatId = crypto.randomUUID();
       const now = Date.now();
       const chat = {
         id: chatId,
@@ -118,50 +164,55 @@ export default function useWorkspaces() {
         updatedAt: now,
         messages: [],
       };
-      const nextWorkspaces = store.workspaces.map((w) => {
+      const nextWorkspaces = storeRef.current.workspaces.map((w) => {
         if (w.id !== workspaceId) return w;
         return { ...w, chats: [...w.chats, chat] };
       });
-      persist({
-        ...store,
-        workspaces: nextWorkspaces,
-        activeChatId: chatId,
-      });
+      persist(
+        {
+          ...storeRef.current,
+          workspaces: nextWorkspaces,
+          activeChatId: chatId,
+        },
+        () => insertChat({ id: chatId, workspaceId, documentId, userId: user.id, title: "New chat" })
+      );
       return chatId;
     },
-    [store, persist]
+    [user, persist]
   );
 
   const selectChat = useCallback(
     (id) => {
-      persist({ ...store, activeChatId: id });
+      setStore({ ...storeRef.current, activeChatId: id });
     },
-    [store, persist]
+    []
   );
 
-  // appendMessage reads storeRef.current so it never operates on a stale snapshot.
-  // This prevents the second call (for the assistant reply) from overwriting the
-  // user message and title that the first call already wrote.
   const appendMessage = useCallback(
     (role, content, displayContent) => {
       const currentStore = storeRef.current;
       if (!currentStore.activeChatId) return;
       const now = Date.now();
+      const msgId = crypto.randomUUID();
       const titleSource = displayContent || content;
+      let shouldSetTitle = false;
+      let newTitle = null;
+
       const nextWorkspaces = currentStore.workspaces.map((ws) => {
         const chatIdx = ws.chats.findIndex((c) => c.id === currentStore.activeChatId);
         if (chatIdx === -1) return ws;
         const chat = ws.chats[chatIdx];
         const isFirstUserMsg =
           role === "user" && chat.messages.every((m) => m.role !== "user");
-        const shouldSetTitle = isFirstUserMsg && chat.title === "New chat";
+        shouldSetTitle = isFirstUserMsg && chat.title === "New chat";
+        if (shouldSetTitle) {
+          newTitle = titleSource.trim().slice(0, 40) + (titleSource.trim().length > 40 ? "…" : "");
+        }
         const msg = { role, content, createdAt: now };
         if (displayContent) msg.displayContent = displayContent;
         const updatedChat = {
           ...chat,
-          title: shouldSetTitle
-            ? titleSource.trim().slice(0, 40) + (titleSource.trim().length > 40 ? "…" : "")
-            : chat.title,
+          title: shouldSetTitle ? newTitle : chat.title,
           updatedAt: now,
           messages: [...chat.messages, msg],
         };
@@ -169,47 +220,66 @@ export default function useWorkspaces() {
         newChats[chatIdx] = updatedChat;
         return { ...ws, chats: newChats };
       });
-      persist({ ...currentStore, workspaces: nextWorkspaces });
+
+      const nextStore = { ...currentStore, workspaces: nextWorkspaces };
+      setStore(nextStore);
+      storeRef.current = nextStore;
+
+      const chatId = currentStore.activeChatId;
+      insertMessage({ id: msgId, chatId, userId: user.id, role, content, displayContent })
+        .then(() => {
+          if (shouldSetTitle) {
+            return updateChat(chatId, { title: newTitle, updatedAt: now });
+          }
+          return updateChat(chatId, { updatedAt: now });
+        })
+        .catch(() => {
+          setError("Couldn't save message — check your connection.");
+        });
     },
-    [persist]
+    [user]
   );
 
   const deleteWorkspace = useCallback(
     (id) => {
-      const nextWorkspaces = store.workspaces.filter((w) => w.id !== id);
+      const nextWorkspaces = storeRef.current.workspaces.filter((w) => w.id !== id);
       const nextActiveId =
-        store.activeWorkspaceId === id
+        storeRef.current.activeWorkspaceId === id
           ? (nextWorkspaces[0]?.id ?? null)
-          : store.activeWorkspaceId;
-      // If the active workspace changed, reset activeChatId too
+          : storeRef.current.activeWorkspaceId;
       const nextChatId =
-        store.activeWorkspaceId === id ? null : store.activeChatId;
-      persist({
-        ...store,
-        workspaces: nextWorkspaces,
-        activeWorkspaceId: nextActiveId,
-        activeChatId: nextChatId,
-      });
+        storeRef.current.activeWorkspaceId === id ? null : storeRef.current.activeChatId;
+      persist(
+        {
+          ...storeRef.current,
+          workspaces: nextWorkspaces,
+          activeWorkspaceId: nextActiveId,
+          activeChatId: nextChatId,
+        },
+        () => deleteWorkspaceRow(id)
+      );
     },
-    [store, persist]
+    [persist]
   );
 
   const deleteChat = useCallback(
     (chatId) => {
-      const nextWorkspaces = store.workspaces.map((ws) => ({
+      const nextWorkspaces = storeRef.current.workspaces.map((ws) => ({
         ...ws,
         chats: ws.chats.filter((c) => c.id !== chatId),
       }));
-      const nextChatId = store.activeChatId === chatId ? null : store.activeChatId;
-      persist({ ...store, workspaces: nextWorkspaces, activeChatId: nextChatId });
+      const nextChatId = storeRef.current.activeChatId === chatId ? null : storeRef.current.activeChatId;
+      persist(
+        { ...storeRef.current, workspaces: nextWorkspaces, activeChatId: nextChatId },
+        () => deleteChatRow(chatId)
+      );
     },
-    [store, persist]
+    [persist]
   );
 
-  // Deleting a document also removes all chats tied to it in the same workspace.
   const deleteDocument = useCallback(
     (workspaceId, docId) => {
-      const nextWorkspaces = store.workspaces.map((ws) => {
+      const nextWorkspaces = storeRef.current.workspaces.map((ws) => {
         if (ws.id !== workspaceId) return ws;
         const orphanChatIds = new Set(
           ws.chats.filter((c) => c.documentId === docId).map((c) => c.id)
@@ -220,52 +290,59 @@ export default function useWorkspaces() {
           chats: ws.chats.filter((c) => !orphanChatIds.has(c.id)),
         };
       });
-      // If the active chat was in the deleted set, clear it
       const allRemainingChatIds = new Set(
         nextWorkspaces.flatMap((ws) => ws.chats.map((c) => c.id))
       );
-      const nextChatId = allRemainingChatIds.has(store.activeChatId)
-        ? store.activeChatId
+      const nextChatId = allRemainingChatIds.has(storeRef.current.activeChatId)
+        ? storeRef.current.activeChatId
         : null;
-      persist({ ...store, workspaces: nextWorkspaces, activeChatId: nextChatId });
+      persist(
+        { ...storeRef.current, workspaces: nextWorkspaces, activeChatId: nextChatId },
+        () => deleteDocumentRow(docId)
+      );
     },
-    [store, persist]
+    [persist]
   );
 
   const renameWorkspace = useCallback(
     (id, name) => {
       const trimmed = name.trim();
       if (!trimmed) return;
-      persist({
-        ...store,
-        workspaces: store.workspaces.map((ws) =>
-          ws.id === id ? { ...ws, name: trimmed } : ws
-        ),
-      });
+      persist(
+        {
+          ...storeRef.current,
+          workspaces: storeRef.current.workspaces.map((ws) =>
+            ws.id === id ? { ...ws, name: trimmed } : ws
+          ),
+        },
+        () => updateWorkspace(id, { name: trimmed })
+      );
     },
-    [store, persist]
+    [persist]
   );
 
   const recolorWorkspace = useCallback(
     (id, colorId) => {
-      persist({
-        ...store,
-        workspaces: store.workspaces.map((ws) =>
-          ws.id === id ? { ...ws, color: colorId } : ws
-        ),
-      });
+      persist(
+        {
+          ...storeRef.current,
+          workspaces: storeRef.current.workspaces.map((ws) =>
+            ws.id === id ? { ...ws, color: colorId } : ws
+          ),
+        },
+        () => updateWorkspace(id, { color: colorId })
+      );
     },
-    [store, persist]
+    [persist]
   );
 
   return {
     store,
-    quotaError,
-    // Selectors
+    loading,
+    error,
     activeWorkspace,
     activeChat,
     activeDocument,
-    // Actions
     createWorkspace,
     selectWorkspace,
     addDocument,

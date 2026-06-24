@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext.jsx";
 import WorkspaceSwitcher from "./WorkspaceSwitcher.jsx";
 import WorkspacePanel from "./WorkspacePanel.jsx";
 
@@ -5,7 +6,7 @@ export default function Sidebar({
   workspaces,
   activeWorkspace,
   activeChatId,
-  quotaError,
+  dataError,
   onSelectWorkspace,
   onCreateWorkspace,
   onAddDocument,
@@ -17,6 +18,8 @@ export default function Sidebar({
   onRenameWorkspace,
   onRecolorWorkspace,
 }) {
+  const { user, signOut } = useAuth();
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -40,7 +43,7 @@ export default function Sidebar({
             <WorkspacePanel
               workspace={activeWorkspace}
               activeChatId={activeChatId}
-              quotaError={quotaError}
+              dataError={dataError}
               onAddDocument={onAddDocument}
               onDeleteDocument={onDeleteDocument}
               onCreateChat={onCreateChat}
@@ -51,6 +54,14 @@ export default function Sidebar({
         )}
       </div>
 
+      <div className="sidebar-footer">
+        <span className="sidebar-footer-email" title={user?.email}>
+          {user?.email}
+        </span>
+        <button className="sidebar-footer-logout" onClick={signOut}>
+          Log out
+        </button>
+      </div>
     </aside>
   );
 }
