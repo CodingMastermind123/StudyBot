@@ -5,7 +5,7 @@ import ChatList from "./ChatList.jsx";
 export default function WorkspacePanel({
   workspace,
   activeChatId,
-  quotaError,
+  dataError,
   onAddDocument,
   onDeleteDocument,
   onCreateChat,
@@ -16,11 +16,12 @@ export default function WorkspacePanel({
 
   return (
     <div className="workspace-panel">
-      {(overLimit || quotaError) && (
+      {dataError && (
+        <div className="banner error quota-banner">{dataError}</div>
+      )}
+      {overLimit && (
         <div className="banner info quota-banner">
-          {quotaError
-            ? quotaError
-            : "This workspace's documents exceed 3 MB — older browsers may fail to save. Consider removing a document."}
+          This workspace's documents exceed 3 MB — large documents cost more tokens to send to Claude.
         </div>
       )}
 

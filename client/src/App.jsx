@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useAuth } from "./context/AuthContext.jsx";
 import useWorkspaces from "./hooks/useWorkspaces.js";
 import { streamChat, sendChat, uploadPdf } from "./api.js";
 import { getColor } from "./lib/colors.js";
@@ -6,6 +7,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import ChatWindow from "./components/ChatWindow.jsx";
 import ChatInput from "./components/ChatInput.jsx";
 import PromptChips from "./components/PromptChips.jsx";
+import AuthScreen from "./components/AuthScreen.jsx";
 
 // Convert a 6-digit hex colour to an rgba() string at the given opacity.
 function hexRgba(hex, alpha) {
@@ -15,10 +17,36 @@ function hexRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+function toClaudeMessage(message) {
+  return {
+    role: message.role,
+    content: message.content,
+  };
+}
+
 export default function App() {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="auth-splash">
+        <h1 className="auth-wordmark">StudyBot</h1>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <AuthScreen />;
+  }
+
+  return <AppShell />;
+}
+
+function AppShell() {
   const {
     store,
-    quotaError,
+    loading: dataLoading,
+    error: dataError,
     activeWorkspace,
     activeChat,
     activeDocument,
@@ -69,7 +97,10 @@ export default function App() {
     if (!activeChat || isLoading) return;
     const { displayContent, hideStreaming: hide } = opts;
     appendMessage("user", content, displayContent);
-    const outgoing = [...activeChat.messages, { role: "user", content }];
+    const outgoing = [
+      ...activeChat.messages.map(toClaudeMessage),
+      { role: "user", content },
+    ];
     const documentText = activeDocument?.text ?? null;
     setIsLoading(true);
     setSendError(null);
@@ -117,7 +148,7 @@ export default function App() {
         workspaces={store.workspaces}
         activeWorkspace={activeWorkspace}
         activeChatId={store.activeChatId}
-        quotaError={quotaError}
+        dataError={dataError}
         onSelectWorkspace={selectWorkspace}
         onCreateWorkspace={createWorkspace}
         onAddDocument={addDocument}
