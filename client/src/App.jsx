@@ -128,6 +128,15 @@ function AppShell() {
     }
   }
 
+  if (dataLoading) {
+    return (
+      <div className="auth-splash">
+        <h1 className="auth-wordmark">StudyBot</h1>
+        <p className="data-loading-hint">Loading your workspaces…</p>
+      </div>
+    );
+  }
+
   // ── Workspace accent CSS custom properties ────────────────────────────────
   const accentHex   = activeWorkspace ? getColor(activeWorkspace.color).value : "#6366f1";
   const accentDim   = hexRgba(accentHex, 0.15); // faint fill for active states

@@ -2123,10 +2123,17 @@ button:focus-visible {
 
 .auth-splash {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   background: var(--color-bg);
+  font-family: var(--font-ui);
+}
+
+.data-loading-hint {
+  font-size: var(--text-base);
+  color: var(--text-meta);
   font-family: var(--font-ui);
 }
 

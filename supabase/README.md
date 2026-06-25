@@ -70,6 +70,41 @@ only reference parent rows owned by the same authenticated user.
 
 ---
 
+## 7. Verify RLS Isolation
+
+This confirms that Row Level Security prevents cross-user data access. You need two separate user accounts.
+
+### App-level check (recommended)
+
+1. **User A** — log in, create a workspace, upload a document, start a chat, send a message.
+2. **User B** — log in with a different account (use a second browser or incognito window).
+3. Verify User B sees **no workspaces, documents, chats, or messages** from User A.
+4. Open the browser Network tab while logged in as User B. Confirm the four `select` requests to `*.supabase.co/rest/v1/{workspaces,documents,chats,messages}` each return **empty arrays** (`[]`).
+5. As User B, create a workspace and verify User A cannot see it either.
+
+### Cross-owner insert check
+
+1. While logged in as User B, open the browser console and note one of User A's workspace IDs (you can find it in the Supabase dashboard → Table Editor → workspaces).
+2. Attempt to insert a document referencing User A's `workspace_id`:
+   - In the Supabase **SQL Editor** (logged in as admin), run:
+     ```sql
+     -- Replace <user_b_id> and <user_a_workspace_id> with real UUIDs
+     set request.jwt.claims = '{"sub": "<user_b_id>", "role": "authenticated"}';
+     set role = 'authenticated';
+     insert into documents (workspace_id, user_id, name, char_count, text)
+     values ('<user_a_workspace_id>', '<user_b_id>', 'attack.pdf', 0, 'test');
+     ```
+   - This must be **rejected** by the parent-ownership policy (`documents_insert` checks that the workspace belongs to the inserting user).
+3. Repeat for chats and messages with cross-user parent IDs — all must be rejected.
+
+### Expected results
+
+- User B sees none of User A's data (and vice versa) — **pass**.
+- Cross-owner inserts are rejected with a policy violation — **pass**.
+- If either check fails, review the RLS policies in `migrations/0001_init.sql` and `0002_harden_child_rls.sql`.
+
+---
+
 ## Quick Checklist
 
 - [ ] Project created, URL + anon key in `client/.env`
@@ -78,3 +113,4 @@ only reference parent rows owned by the same authenticated user.
 - [ ] Google OAuth configured (Cloud Console credentials + Supabase provider)
 - [ ] Site URL + redirect URLs set
 - [ ] Vercel env vars added (before production deploy)
+- [ ] RLS isolation verified (§7 — two-user cross-check)
