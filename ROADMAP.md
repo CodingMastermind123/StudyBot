@@ -16,6 +16,7 @@
 - [x] Optimistic UI with async persistence (feels instant like localStorage)
 - [x] Session persistence across devices and browsers
 - [x] Replaced localStorage entirely
+- **Migration note:** No automated localStorage → Supabase backfill was implemented; existing local-only data is not migrated (start-fresh). Realistically only the developer had local data. A one-time import could be added later if needed.
 
 ## v2b — RAG Pipeline
 The next major upgrade. Instead of truncating large documents to fit 
