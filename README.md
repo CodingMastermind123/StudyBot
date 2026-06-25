@@ -1,6 +1,6 @@
 # StudyBot
 
-An AI-powered study assistant that lets you upload course materials and interact with them through a smart chat interface. Built with React, Express, and the Anthropic Claude API.
+An AI-powered study assistant that lets you upload entire textbooks and course materials, then interact with them through a smart chat interface. Uses a RAG pipeline (OpenAI embeddings + Supabase pgvector) to retrieve the most relevant content for each question, so even 500+ page documents work accurately. Built with React, Express, Claude, and OpenAI.
 
 **Live demo:** [study-bot-lovat.vercel.app](https://study-bot-lovat.vercel.app)
 
@@ -26,12 +26,12 @@ An AI-powered study assistant that lets you upload course materials and interact
 
 **Workspaces** — Organize your studying by class. Create a workspace for Physics, Math, Chemistry, or any subject. Each workspace has its own documents, chats, and a custom accent color that themes the entire UI.
 
-**PDF Upload & AI Chat** — Upload a textbook chapter or lecture slides and ask anything about the material. StudyBot uses Claude as its AI backbone with prompt caching, so follow-up questions in the same session cost a fraction of a cent.
+**PDF Upload & AI Chat** — Upload an entire textbook or lecture slides (up to 50 MB) and ask anything about the material. Documents are chunked, embedded, and stored as vectors — each question retrieves only the most relevant passages, so even huge documents get accurate answers. Ingestion progress streams live to the UI.
 
-**Study Tool Shortcuts** — One-click prompts for the most common study tasks:
+**Study Tool Shortcuts** — One-click prompts for the most common study tasks. These use broad retrieval mode, so they cover the entire document — not just the first few pages:
 - **Summarize** — bullet-point summary of the document
 - **Notes** — structured study notes organized by topic
-- **Diagram** — Mermaid.js diagram illustrating a key concept
+- **Diagram** — Mermaid.js diagram illustrating key concepts
 - **Practice Problems** — configurable interactive quiz (see below)
 
 **Interactive Practice Quiz** — Generate multiple choice quizzes with a configurable number of questions and difficulty level (Easy / Medium / Hard). Questions render as a real quiz UI — select your answers, submit, and get instant grading with per-question explanations and a final score. No extra API calls needed after generation.
@@ -133,6 +133,7 @@ StudyBot/
 ### Prerequisites
 - Node.js 18+
 - An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
+- An OpenAI API key ([platform.openai.com](https://platform.openai.com)) — used for embeddings
 - A Supabase project (free tier works — see [`supabase/README.md`](supabase/README.md) for setup)
 
 ### Setup
@@ -146,7 +147,7 @@ cd StudyBot
 cd server
 npm install
 cp .env.example .env
-# Add your ANTHROPIC_API_KEY to server/.env
+# Add ANTHROPIC_API_KEY, OPENAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY to server/.env
 
 # Install client dependencies
 cd ../client
@@ -159,12 +160,7 @@ cp .env.example .env
 ### Running locally
 
 ```bash
-# Terminal 1 — start the backend
-cd server
-npm run dev
-
-# Terminal 2 — start the frontend
-cd client
+# From the project root — starts both server and client
 npm run dev
 ```
 
@@ -185,7 +181,6 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | `PORT` | Port the Express server runs on | `8787` |
 | `ALLOWED_ORIGIN` | CORS origin (your frontend URL) | Required |
 | `CLAUDE_MODEL` | Anthropic model ID | `claude-sonnet-4-20250514` |
-| `MAX_DOC_CHARS` | Max characters extracted from PDF | `200000` |
 | `RAG_TOP_K` | Number of chunks for top-k retrieval | `8` |
 | `RAG_CHUNK_SIZE` | Target chunk size in characters | `3000` |
 | `RAG_CHUNK_OVERLAP` | Overlap between chunks in characters | `400` |

@@ -9,7 +9,7 @@
 - [x] Session history per workspace
 - [x] Dynamic workspace accent colors
 
-## v2a — Auth + Cloud Storage (Current)
+## v2a — Auth + Cloud Storage
 - [x] User accounts with email/password and Google OAuth (Supabase Auth)
 - [x] All data (workspaces, documents, chats, messages) stored in Supabase Postgres
 - [x] Row Level Security for per-user data isolation
@@ -18,7 +18,7 @@
 - [x] Replaced localStorage entirely
 - **Migration note:** No automated localStorage → Supabase backfill was implemented; existing local-only data is not migrated (start-fresh). Realistically only the developer had local data. A one-time import could be added later if needed.
 
-## v2b — RAG Pipeline (Implemented)
+## v2b — RAG Pipeline (Current)
 Replaces the truncated-document approach with a full Retrieval-Augmented
 Generation pipeline:
 - [x] Upload entire textbooks (500+ pages) — no truncation
