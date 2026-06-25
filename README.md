@@ -55,6 +55,8 @@ An AI-powered study assistant that lets you upload course materials and interact
 | Frontend | React 18, Vite |
 | Backend | Node.js, Express |
 | AI | Anthropic Claude API (claude-sonnet-4-20250514) |
+| Embeddings | OpenAI `text-embedding-3-small` |
+| Vector Store | Supabase pgvector (HNSW index) |
 | PDF Parsing | pdf-parse |
 | Diagram Rendering | Mermaid.js |
 | Markdown Rendering | react-markdown |
@@ -96,23 +98,32 @@ StudyBot/
 │   └── src/
 │       ├── app.js                  # Express app + middleware + routes
 │       ├── routes/
-│       │   ├── upload.js           # POST /api/upload (PDF extraction)
-│       │   └── chat.js             # POST /api/chat (Claude API)
+│       │   ├── upload.js           # POST /api/upload (PDF extraction, legacy)
+│       │   ├── documents.js        # POST /api/documents/ingest (RAG pipeline)
+│       │   └── chat.js             # POST /api/chat (Claude API + retrieval)
 │       └── services/
 │           ├── pdf.js              # Text extraction with pdf-parse
-│           └── claude.js           # Claude API with prompt caching
+│           ├── claude.js           # Claude API with prompt caching
+│           ├── supabase.js         # Per-request JWT-scoped + admin clients
+│           ├── embeddings.js       # OpenAI embedding with batching + retry
+│           ├── chunking.js         # Text chunking (paragraph/sentence-aware)
+│           └── retrieval.js        # Top-k and broad retrieval modes
+│   └── scripts/
+│       └── backfill-embeddings.js  # One-time backfill for existing docs
 │
 └── supabase/
     ├── migrations/
-    │   └── 0001_init.sql           # Tables, indexes, RLS policies
+    │   ├── 0001_init.sql           # Tables, indexes, RLS policies
+    │   ├── 0002_harden_child_rls.sql  # Parent-ownership RLS tightening
+    │   └── 0003_rag_pgvector.sql   # pgvector, document_chunks, HNSW, RPC
     └── README.md                   # Dashboard setup runbook
 ```
 
 **Key design decisions:**
-- The Anthropic API key lives exclusively on the Express server and is never referenced in the client bundle
-- Document text is sent as a cached system block, dramatically reducing per-message cost for follow-up questions
-- All user data (workspaces, documents, chats, messages) is stored in Supabase Postgres with Row Level Security — data CRUD goes client → Supabase directly, while Claude API calls route through Express
-- The Supabase anon key is safe to expose in the client bundle; RLS policies enforce per-user isolation at the database level
+- The Anthropic and OpenAI API keys live exclusively on the Express server and are never referenced in the client bundle
+- RAG pipeline: documents are chunked (~3000 chars), embedded (OpenAI `text-embedding-3-small`), and stored as vectors in Supabase pgvector. Chat retrieves the most relevant chunks via HNSW cosine similarity; study tools use broad (full-doc) retrieval
+- The client forwards the user's Supabase JWT to the server for RLS-scoped database access — no service-role key in request handlers
+- All user data (workspaces, documents, chats, messages, chunks) is stored in Supabase Postgres with Row Level Security — data CRUD goes client → Supabase directly, while AI calls and ingestion route through Express
 - Quiz grading and scoring happen entirely client-side after a single JSON generation call
 
 ---
@@ -166,10 +177,19 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | Variable | Description | Default |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
-| `PORT` | Port the Express server runs on | `3001` |
+| `OPENAI_API_KEY` | OpenAI API key (embeddings) | Required |
+| `OPENAI_EMBEDDING_MODEL` | OpenAI embedding model | `text-embedding-3-small` |
+| `SUPABASE_URL` | Supabase project URL | Required |
+| `SUPABASE_ANON_KEY` | Supabase anon/public key | Required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (backfill script only) | Optional |
+| `PORT` | Port the Express server runs on | `8787` |
 | `ALLOWED_ORIGIN` | CORS origin (your frontend URL) | Required |
 | `CLAUDE_MODEL` | Anthropic model ID | `claude-sonnet-4-20250514` |
-| `MAX_DOC_CHARS` | Max characters extracted from PDF | `40000` |
+| `MAX_DOC_CHARS` | Max characters extracted from PDF | `200000` |
+| `RAG_TOP_K` | Number of chunks for top-k retrieval | `8` |
+| `RAG_CHUNK_SIZE` | Target chunk size in characters | `3000` |
+| `RAG_CHUNK_OVERLAP` | Overlap between chunks in characters | `400` |
+| `RAG_BROAD_CHAR_BUDGET` | Max chars for broad retrieval mode | `480000` |
 
 **client/.env**
 
@@ -179,7 +199,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | `VITE_SUPABASE_URL` | Supabase project URL (from Project Settings → API) |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key (safe to expose — RLS is the security boundary) |
 
-> **Note:** The Supabase **service-role key** is NOT used anywhere and must never be placed in the client.
+> **Note:** The Supabase **service-role key** is only used in the offline backfill script (`server/scripts/backfill-embeddings.js`) and must never be placed in the client or used in request handlers.
 
 ---
 
@@ -206,28 +226,51 @@ See [`supabase/README.md`](supabase/README.md) for the full setup runbook (proje
    - `VITE_SUPABASE_ANON_KEY` — your Supabase anon/public key
 4. Deploy
 
-Then update `ALLOWED_ORIGIN` in Railway to your Vercel domain and redeploy. Railway needs **no** new environment variables for the Supabase migration.
+Then update `ALLOWED_ORIGIN` in Railway to your Vercel domain and redeploy. Railway also needs `OPENAI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` for the RAG pipeline.
 
 Both platforms auto-deploy on every push to `main`.
+
+---
+
+## RAG Pipeline
+
+StudyBot uses Retrieval-Augmented Generation to handle documents of any size — from a single page to a 500+ page textbook.
+
+**Ingestion (once per document):** PDF → text extraction → chunking (~3000 chars, paragraph-aware) → embedding via OpenAI `text-embedding-3-small` (1536 dimensions) → stored in Supabase pgvector with an HNSW index. Progress streams to the UI over SSE.
+
+**Retrieval (each interaction):**
+- **Top-k mode** (default for chat): embeds the user's question, vector-searches the top 8 most relevant chunks via cosine similarity, sends only those to Claude
+- **Broad mode** (study tools — Summarize, Notes, Diagram, Practice): retrieves all chunks in document order so Claude sees the full document for whole-document operations. Large documents are stride-sampled to fit within the context budget.
+
+**Fallback:** Documents that haven't been ingested yet (e.g., during backfill) fall back to the stored raw text.
+
+**Backfilling existing documents:**
+```bash
+# Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY in server/.env
+node server/scripts/backfill-embeddings.js
+```
+
+**Cost:** `text-embedding-3-small` costs ~$0.02/1M tokens. A 500-page textbook ≈ ~333k tokens ≈ **~$0.007 one-time** to embed. Each chat query embeds only the question (tens of tokens → effectively free).
 
 ---
 
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for planned features including:
-- **v2** — RAG pipeline for full textbook uploads (LangChain.js + ChromaDB)
+- **v2b** — RAG pipeline for full textbook uploads (implemented)
 - **v3** — Live PDF preview panel with page navigation
 
 ---
 
 ## Security
 
-- The Anthropic API key is never sent to or bundled with the frontend
+- The Anthropic and OpenAI API keys are never sent to or bundled with the frontend
+- The Supabase service-role key is only used in the offline backfill script — never in request handlers
 - CORS is restricted to the configured `ALLOWED_ORIGIN`
 - PDF upload is validated for file type and size server-side
-- All user data is protected by Supabase Row Level Security — each table enforces `user_id = auth.uid()` on SELECT, INSERT, UPDATE, and DELETE, guaranteeing per-user isolation at the database level
-- Only the Supabase anon (public) key is used in the client; the service-role key is never referenced
-- **Future hardening (optional):** The Express Claude proxy currently accepts unauthenticated requests. To lock it down, the client could send the Supabase access token as `Authorization: Bearer` and Express would verify it with the project's JWT secret (`SUPABASE_JWT_SECRET`). This is not required because the proxy holds no user data and RLS protects all data access
+- All user data is protected by Supabase Row Level Security — each table (including `document_chunks`) enforces `user_id = auth.uid()` on SELECT, INSERT, UPDATE, and DELETE, with parent-ownership checks on child tables
+- The client forwards the user's Supabase JWT to the server; the server builds a per-request Supabase client scoped to that user so RLS applies automatically
+- Only the Supabase anon (public) key is used in the client; the service-role key is never referenced in client code
 
 ---
 

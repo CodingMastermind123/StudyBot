@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "./context/AuthContext.jsx";
 import useWorkspaces from "./hooks/useWorkspaces.js";
-import { streamChat, sendChat, uploadPdf } from "./api.js";
+import { streamChat, sendChat, ingestDocument } from "./api.js";
 import { getColor } from "./lib/colors.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatWindow from "./components/ChatWindow.jsx";
@@ -79,29 +79,48 @@ function AppShell() {
   async function handleMainDrop(file) {
     if (!activeWorkspace || !file) return;
     if (file.type !== "application/pdf") return;
+    const docId = crypto.randomUUID();
+    addDocument(activeWorkspace.id, {
+      id: docId,
+      name: file.name,
+      charCount: 0,
+      ingestStatus: "processing",
+    });
     try {
-      const data = await uploadPdf(file);
-      addDocument(activeWorkspace.id, {
-        name: data.filename,
-        charCount: data.charCount,
-        text: data.text,
+      const result = await ingestDocument({
+        file,
+        documentId: docId,
+        workspaceId: activeWorkspace.id,
+        name: file.name,
       });
+      if (result) {
+        addDocument(activeWorkspace.id, {
+          id: docId,
+          name: file.name,
+          charCount: result.charCount,
+          ingestStatus: "ready",
+          chunkCount: result.chunkCount,
+        });
+      }
     } catch {
-      // DocumentList in the sidebar shows its own errors; ignore here to keep the
-      // drop overlay simple. User can retry via the sidebar upload zone.
+      addDocument(activeWorkspace.id, {
+        id: docId,
+        name: file.name,
+        charCount: 0,
+        ingestStatus: "failed",
+      });
     }
   }
 
   // ── Shared chat send handler ───────────────────────────────────────────────
   async function handleSend(content, opts = {}) {
     if (!activeChat || isLoading) return;
-    const { displayContent, hideStreaming: hide } = opts;
+    const { displayContent, hideStreaming: hide, retrieval } = opts;
     appendMessage("user", content, displayContent);
     const outgoing = [
       ...activeChat.messages.map(toClaudeMessage),
       { role: "user", content },
     ];
-    const documentText = activeDocument?.text ?? null;
     setIsLoading(true);
     setSendError(null);
     setStreamingContent("");
@@ -111,7 +130,8 @@ function AppShell() {
     try {
       await streamChat({
         messages: outgoing,
-        documentText,
+        documentId: activeChat.documentId || null,
+        retrieval: retrieval || "topk",
         onToken: (token) => {
           accumulated += token;
           if (!hide) setStreamingContent(accumulated);

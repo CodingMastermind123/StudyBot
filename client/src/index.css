@@ -2299,6 +2299,54 @@ button:focus-visible {
   }
 }
 
+/* ─── Ingest progress bar ────────────────────────────────────────────────── */
+.ingest-progress-bar {
+  width: 100%;
+  max-width: 320px;
+  height: 6px;
+  background: var(--border-main);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: var(--space-2);
+}
+
+.ingest-progress-bar.compact {
+  max-width: 100%;
+  margin-top: var(--space-1);
+}
+
+.ingest-progress-fill {
+  height: 100%;
+  background: var(--color-accent, #500000);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ─── Document status badges ─────────────────────────────────────────────── */
+.doc-status {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.doc-status.processing {
+  background: rgba(217, 119, 6, 0.2);
+  color: #d97706;
+}
+
+.doc-status.failed {
+  background: rgba(220, 38, 38, 0.2);
+  color: #dc2626;
+}
+
+.doc-status.pending {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sb-text-muted);
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .message,

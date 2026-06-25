@@ -24,7 +24,10 @@ export default function Mermaid({ code }) {
           setError(false);
         }
       } catch {
-        if (!cancelled) setError(true);
+        if (!cancelled) {
+          setError(true);
+          if (containerRef.current) containerRef.current.innerHTML = "";
+        }
       }
     })();
 

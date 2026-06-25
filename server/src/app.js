@@ -34,4 +34,7 @@ app.use("/api", uploadRouter);
 import chatRouter from "./routes/chat.js";
 app.use("/api", chatRouter);
 
+import documentsRouter from "./routes/documents.js";
+app.use("/api", documentsRouter);
+
 export default app;

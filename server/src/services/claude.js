@@ -4,37 +4,36 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
 
+function buildSystem(contextText) {
+  if (contextText) {
+    return [
+      {
+        type: "text",
+        text: "You are a helpful study assistant. Answer questions based on the provided document context. Be clear, accurate, and educational.",
+      },
+      {
+        type: "text",
+        text: `Document context:\n\n${contextText}`,
+        cache_control: { type: "ephemeral" },
+      },
+    ];
+  }
+  return "You are a helpful study assistant. No relevant document context was found. Answer carefully based on your knowledge, and ask the user to clarify if needed.";
+}
+
 /**
  * Send a conversation to Claude and return the assistant's reply text.
- * @param {{ messages: Array<{role: string, content: string}>, documentText: string|null }} params
+ * @param {{ messages: Array<{role: string, content: string}>, contextText: string|null }} params
  * @returns {Promise<string>}
  */
-export async function getReply({ messages, documentText }) {
-  // Build system prompt blocks. When a document is present, place it in a
-  // cache_control block so it is prompt-cached across turns — the doc is
-  // resent every message so caching cuts cost and latency significantly.
-  const system = documentText
-    ? [
-        {
-          type: "text",
-          text: "You are a helpful study assistant. Answer questions based on the provided document. Be clear, accurate, and educational.",
-        },
-        {
-          type: "text",
-          text: `Document content:\n\n${documentText}`,
-          cache_control: { type: "ephemeral" },
-        },
-      ]
-    : "You are a helpful study assistant. No document has been loaded yet. Answer general study questions helpfully.";
-
+export async function getReply({ messages, contextText = null }) {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
-    system,
+    system: buildSystem(contextText),
     messages,
   });
 
-  // content is an array of blocks — collect all text blocks into one string
   return response.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
@@ -43,28 +42,14 @@ export async function getReply({ messages, documentText }) {
 
 /**
  * Stream a conversation turn from Claude, calling onToken for each text delta.
- * @param {{ messages: Array<{role: string, content: string}>, documentText: string|null, onToken: (t: string) => void }} params
+ * @param {{ messages: Array<{role: string, content: string}>, contextText: string|null, onToken: (t: string) => void }} params
  * @returns {Promise<void>}
  */
-export async function streamReply({ messages, documentText, onToken }) {
-  const system = documentText
-    ? [
-        {
-          type: "text",
-          text: "You are a helpful study assistant. Answer questions based on the provided document. Be clear, accurate, and educational.",
-        },
-        {
-          type: "text",
-          text: `Document content:\n\n${documentText}`,
-          cache_control: { type: "ephemeral" },
-        },
-      ]
-    : "You are a helpful study assistant. No document has been loaded yet. Answer general study questions helpfully.";
-
+export async function streamReply({ messages, contextText = null, onToken }) {
   const stream = client.messages.stream({
     model: MODEL,
     max_tokens: 2048,
-    system,
+    system: buildSystem(contextText),
     messages,
   });
 

@@ -79,7 +79,7 @@ export default function PromptChips({ activeChat, isLoading, onSend }) {
     if (p.id === PRACTICE_ID) {
       setShowPracticeForm(true);
     } else {
-      onSend(p.prompt, { displayContent: p.displayLabel });
+      onSend(p.prompt, { displayContent: p.displayLabel, retrieval: p.retrieval });
     }
   }
 
@@ -88,6 +88,7 @@ export default function PromptChips({ activeChat, isLoading, onSend }) {
     onSend(practicePrompt.buildPrompt(count, difficulty), {
       displayContent: practicePrompt.buildDisplayLabel(count, difficulty),
       hideStreaming: true,
+      retrieval: practicePrompt.retrieval,
     });
     setShowPracticeForm(false);
   }

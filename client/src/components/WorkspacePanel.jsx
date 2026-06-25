@@ -21,7 +21,7 @@ export default function WorkspacePanel({
       )}
       {overLimit && (
         <div className="banner info quota-banner">
-          This workspace's documents exceed 3 MB — large documents cost more tokens to send to Claude.
+          This workspace has over 3 MB of document content. RAG handles large documents efficiently.
         </div>
       )}
 

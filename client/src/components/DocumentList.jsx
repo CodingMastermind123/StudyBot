@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { uploadPdf } from "../api.js";
+import { ingestDocument } from "../api.js";
 
 function humanBytes(n) {
   if (n < 1024) return `${n} B`;
@@ -7,34 +7,65 @@ function humanBytes(n) {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function statusBadge(status) {
+  if (status === "ready") return null;
+  if (status === "processing") return <span className="doc-status processing">processing</span>;
+  if (status === "failed") return <span className="doc-status failed">failed</span>;
+  return <span className="doc-status pending">pending</span>;
+}
+
 export default function DocumentList({
   workspace,
   onAddDocument,
   onDeleteDocument,
 }) {
-  const [uploading, setUploading] = useState(false);
+  const [ingestState, setIngestState] = useState(null);
   const [uploadError, setUploadError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);
+  const uploading = !!ingestState;
 
   async function handleFile(file) {
     if (!file || file.type !== "application/pdf") {
       setUploadError("Only PDF files are supported.");
       return;
     }
-    setUploading(true);
+    const docId = crypto.randomUUID();
+    setIngestState({ phase: "extracting" });
     setUploadError(null);
+    onAddDocument(workspace.id, {
+      id: docId,
+      name: file.name,
+      charCount: 0,
+      ingestStatus: "processing",
+    });
     try {
-      const data = await uploadPdf(file);
-      onAddDocument(workspace.id, {
-        name: data.filename,
-        charCount: data.charCount,
-        text: data.text,
+      const result = await ingestDocument({
+        file,
+        documentId: docId,
+        workspaceId: workspace.id,
+        name: file.name,
+        onProgress: (event) => setIngestState(event),
       });
+      if (result) {
+        onAddDocument(workspace.id, {
+          id: docId,
+          name: file.name,
+          charCount: result.charCount,
+          ingestStatus: "ready",
+          chunkCount: result.chunkCount,
+        });
+      }
     } catch (err) {
+      onAddDocument(workspace.id, {
+        id: docId,
+        name: file.name,
+        charCount: 0,
+        ingestStatus: "failed",
+      });
       setUploadError(err.message || "Upload failed.");
     } finally {
-      setUploading(false);
+      setIngestState(null);
     }
   }
 
@@ -63,8 +94,9 @@ export default function DocumentList({
               <span className="doc-item-name" title={doc.name}>
                 {doc.name}
               </span>
+              {statusBadge(doc.ingestStatus)}
               <span className="doc-item-size">
-                {humanBytes(new Blob([doc.text ?? ""]).size)}
+                {humanBytes(doc.charCount || 0)}
               </span>
               <button
                 className="btn-icon-delete"
@@ -95,7 +127,22 @@ export default function DocumentList({
         onDrop={onDrop}
       >
         {uploading ? (
-          <span className="upload-zone-label">Uploading…</span>
+          <>
+            <span className="upload-zone-label">
+              {ingestState?.phase === "extracting" && "Reading PDF…"}
+              {ingestState?.phase === "embedding" && `Embedding (${ingestState.done}/${ingestState.total})`}
+              {ingestState?.phase === "done" && "Ready"}
+              {!ingestState?.phase && "Processing…"}
+            </span>
+            {ingestState?.phase === "embedding" && ingestState.total > 0 && (
+              <div className="ingest-progress-bar compact">
+                <div
+                  className="ingest-progress-fill"
+                  style={{ width: `${Math.round((ingestState.done / ingestState.total) * 100)}%` }}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <>
             <span className="upload-zone-label">

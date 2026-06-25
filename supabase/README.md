@@ -37,6 +37,16 @@ If you already ran `0001_init.sql` before `0002_harden_child_rls.sql` existed, r
 It tightens child-table insert/update policies so documents, chats, and messages can
 only reference parent rows owned by the same authenticated user.
 
+### RAG migration (v2b)
+
+6. Run [`migrations/0003_rag_pgvector.sql`](migrations/0003_rag_pgvector.sql) in the SQL Editor.
+7. Verify:
+   - The `vector` extension exists (check **Database → Extensions**)
+   - The `document_chunks` table exists with columns: `id, document_id, user_id, chunk_index, content, embedding, created_at`
+   - The `documents` table has new columns: `ingest_status` (text), `chunk_count` (integer)
+   - `document_chunks` has RLS enabled with 4 policies (select, insert, update, delete)
+   - The `match_document_chunks` function exists (check **Database → Functions**)
+
 ## 4. Enable Email Auth
 
 1. Go to **Authentication → Providers → Email**.
@@ -97,20 +107,46 @@ This confirms that Row Level Security prevents cross-user data access. You need 
    - This must be **rejected** by the parent-ownership policy (`documents_insert` checks that the workspace belongs to the inserting user).
 3. Repeat for chats and messages with cross-user parent IDs — all must be rejected.
 
+### Chunk RLS isolation (v2b)
+
+1. **User A** — upload and ingest a document (wait for "ready" status).
+2. **User B** — in the Supabase SQL Editor, simulate User B querying User A's chunks:
+   ```sql
+   set request.jwt.claims = '{"sub": "<user_b_id>", "role": "authenticated"}';
+   set role = 'authenticated';
+   select * from document_chunks where document_id = '<user_a_doc_id>';
+   ```
+   This must return **zero rows** (RLS blocks cross-user access).
+3. Attempt a cross-owner chunk insert:
+   ```sql
+   insert into document_chunks (document_id, user_id, chunk_index, content, embedding)
+   values ('<user_a_doc_id>', '<user_b_id>', 0, 'attack', '[0,0,...,0]'::vector(1536));
+   ```
+   This must be **rejected** by the parent-ownership policy.
+4. Call the RPC as User B against User A's document:
+   ```sql
+   select * from match_document_chunks('<user_a_doc_id>', '[0,0,...,0]'::vector(1536), 5);
+   ```
+   This must return **zero rows** (SECURITY INVOKER respects RLS).
+
 ### Expected results
 
 - User B sees none of User A's data (and vice versa) — **pass**.
 - Cross-owner inserts are rejected with a policy violation — **pass**.
-- If either check fails, review the RLS policies in `migrations/0001_init.sql` and `0002_harden_child_rls.sql`.
+- Chunk RLS isolation verified (no cross-user chunk access or RPC results) — **pass**.
+- If either check fails, review the RLS policies in `migrations/0001_init.sql`, `0002_harden_child_rls.sql`, and `0003_rag_pgvector.sql`.
 
 ---
 
 ## Quick Checklist
 
 - [ ] Project created, URL + anon key in `client/.env`
-- [ ] Migration SQL executed, 4 tables with RLS enabled
+- [ ] Migration `0001_init.sql` executed, 4 tables with RLS enabled
+- [ ] Migration `0002_harden_child_rls.sql` executed (parent-ownership checks)
+- [ ] Migration `0003_rag_pgvector.sql` executed (pgvector, document_chunks, HNSW, RPC)
 - [ ] Email auth enabled (confirm-email toggle set per preference)
 - [ ] Google OAuth configured (Cloud Console credentials + Supabase provider)
 - [ ] Site URL + redirect URLs set
 - [ ] Vercel env vars added (before production deploy)
-- [ ] RLS isolation verified (§7 — two-user cross-check)
+- [ ] Server env vars set: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `OPENAI_API_KEY`
+- [ ] RLS isolation verified (§7 — two-user cross-check including chunks)

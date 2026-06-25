@@ -18,7 +18,8 @@ export function assembleStore(workspaceRows, documentRows, chatRows, messageRows
         id: d.id,
         name: d.name,
         charCount: d.char_count,
-        text: d.text,
+        ingestStatus: d.ingest_status || "pending",
+        chunkCount: d.chunk_count || 0,
         uploadedAt: tsToMs(d.uploaded_at),
       }));
 
@@ -65,7 +66,7 @@ export function assembleStore(workspaceRows, documentRows, chatRows, messageRows
 export async function fetchStore(userId) {
   const [wsRes, docRes, chatRes, msgRes] = await Promise.all([
     supabase.from("workspaces").select("*").eq("user_id", userId),
-    supabase.from("documents").select("*").eq("user_id", userId),
+    supabase.from("documents").select("id,workspace_id,user_id,name,char_count,uploaded_at,ingest_status,chunk_count").eq("user_id", userId),
     supabase.from("chats").select("*").eq("user_id", userId),
     supabase.from("messages").select("*").eq("user_id", userId),
   ]);

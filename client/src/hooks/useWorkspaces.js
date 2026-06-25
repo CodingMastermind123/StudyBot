@@ -131,22 +131,26 @@ export default function useWorkspaces() {
   );
 
   const addDocument = useCallback(
-    (workspaceId, { name, charCount, text }) => {
-      const docId = crypto.randomUUID();
-      const doc = { id: docId, name, charCount, text, uploadedAt: Date.now() };
+    (workspaceId, { id, name, charCount, ingestStatus = "ready", chunkCount = 0 }) => {
+      const docId = id || crypto.randomUUID();
+      const doc = { id: docId, name, charCount, ingestStatus, chunkCount, uploadedAt: Date.now() };
       const nextWorkspaces = storeRef.current.workspaces.map((ws) => {
         if (ws.id !== workspaceId) return ws;
+        const exists = ws.documents.some((d) => d.id === docId);
+        if (exists) {
+          return {
+            ...ws,
+            documents: ws.documents.map((d) => (d.id === docId ? { ...d, ...doc } : d)),
+          };
+        }
         return { ...ws, documents: [...ws.documents, doc] };
       });
       const updatedWs = nextWorkspaces.find((w) => w.id === workspaceId);
       const overLimit = updatedWs ? isOverDocLimit(updatedWs) : false;
-      persist(
-        { ...storeRef.current, workspaces: nextWorkspaces },
-        () => insertDocument({ id: docId, workspaceId, userId: user.id, name, charCount, text })
-      );
+      setStore({ ...storeRef.current, workspaces: nextWorkspaces });
       return { docId, overLimit };
     },
-    [user, persist]
+    []
   );
 
   const createChat = useCallback(

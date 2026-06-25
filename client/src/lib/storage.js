@@ -1,12 +1,11 @@
 // ─── Quota helpers ────────────────────────────────────────────────────────────
 
-// Warn when one workspace's combined document text exceeds 3 MB
+// Informational threshold — RAG handles large docs fine, but surface a note
 export const WORKSPACE_DOC_LIMIT_BYTES = 3 * 1024 * 1024;
 
-// Accurate UTF-8 byte size via Blob (not .length which counts UTF-16 code units)
 export function workspaceTextBytes(workspace) {
   return workspace.documents.reduce(
-    (total, doc) => total + new Blob([doc.text ?? ""]).size,
+    (total, doc) => total + (doc.charCount || 0),
     0
   );
 }

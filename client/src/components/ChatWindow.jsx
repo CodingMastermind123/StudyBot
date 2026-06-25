@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble.jsx";
-import { uploadPdf } from "../api.js";
+import { ingestDocument } from "../api.js";
 
 /* ── Inline SVG icons for empty states ─────────────────────────────────── */
 function BookIcon() {
@@ -43,8 +43,9 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
 
   // ── Center upload zone state ───────────────────────────────────────────────
   const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
+  const [ingestState, setIngestState] = useState(null); // { phase, done, total }
   const [uploadError, setUploadError] = useState(null);
+  const uploading = !!ingestState;
 
   async function handleCenterFile(file) {
     if (!file) return;
@@ -52,19 +53,42 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
       setUploadError("Only PDF files are supported.");
       return;
     }
-    setUploading(true);
+    const docId = crypto.randomUUID();
+    setIngestState({ phase: "extracting" });
     setUploadError(null);
+    onAddDocument(activeWorkspace.id, {
+      id: docId,
+      name: file.name,
+      charCount: 0,
+      ingestStatus: "processing",
+    });
     try {
-      const data = await uploadPdf(file);
-      onAddDocument(activeWorkspace.id, {
-        name: data.filename,
-        charCount: data.charCount,
-        text: data.text,
+      const result = await ingestDocument({
+        file,
+        documentId: docId,
+        workspaceId: activeWorkspace.id,
+        name: file.name,
+        onProgress: (event) => setIngestState(event),
       });
+      if (result) {
+        onAddDocument(activeWorkspace.id, {
+          id: docId,
+          name: file.name,
+          charCount: result.charCount,
+          ingestStatus: "ready",
+          chunkCount: result.chunkCount,
+        });
+      }
     } catch (err) {
+      onAddDocument(activeWorkspace.id, {
+        id: docId,
+        name: file.name,
+        charCount: 0,
+        ingestStatus: "failed",
+      });
       setUploadError(err.message || "Upload failed. Please try again.");
     } finally {
-      setUploading(false);
+      setIngestState(null);
     }
   }
 
@@ -106,7 +130,22 @@ export default function ChatWindow({ activeWorkspace, activeChat, isLoading, str
           >
             <UploadDocIcon />
             {uploading ? (
-              <p className="empty-state-title">Uploading…</p>
+              <>
+                <p className="empty-state-title">
+                  {ingestState?.phase === "extracting" && "Reading PDF…"}
+                  {ingestState?.phase === "embedding" && `Embedding chunks (${ingestState.done}/${ingestState.total})`}
+                  {ingestState?.phase === "done" && "Ready"}
+                  {!ingestState?.phase && "Processing…"}
+                </p>
+                {ingestState?.phase === "embedding" && ingestState.total > 0 && (
+                  <div className="ingest-progress-bar">
+                    <div
+                      className="ingest-progress-fill"
+                      style={{ width: `${Math.round((ingestState.done / ingestState.total) * 100)}%` }}
+                    />
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 <p className="empty-state-title">Upload a document</p>

@@ -18,15 +18,19 @@
 - [x] Replaced localStorage entirely
 - **Migration note:** No automated localStorage → Supabase backfill was implemented; existing local-only data is not migrated (start-fresh). Realistically only the developer had local data. A one-time import could be added later if needed.
 
-## v2b — RAG Pipeline
-The next major upgrade. Instead of truncating large documents to fit 
-Claude's context window, v2b will implement a proper Retrieval-Augmented 
+## v2b — RAG Pipeline (Implemented)
+Replaces the truncated-document approach with a full Retrieval-Augmented
 Generation pipeline:
-- Upload an entire textbook once (500+ pages)
-- Document gets chunked and embedded as vectors on the backend
-- Each chat message retrieves only the most semantically relevant chunks
-- Claude answers with precise context rather than a truncated first section
-- Planned stack: Express + LangChain.js + ChromaDB (local vector store)
+- [x] Upload entire textbooks (500+ pages) — no truncation
+- [x] Server-side ingestion: extract → chunk (~3000 chars) → embed (OpenAI `text-embedding-3-small`) → store in Supabase pgvector
+- [x] SSE progress UI during ingestion (extracting → embedding done/total → ready)
+- [x] Top-k retrieval for chat: embed the question, vector-search the most relevant chunks via HNSW index
+- [x] Broad retrieval for study tools (Summarize, Notes, Diagram, Practice): retrieves full document context so whole-document operations work correctly
+- [x] Fallback to stored document text for un-ingested documents
+- [x] Offline backfill script for pre-existing documents
+- [x] JWT-forwarded Supabase access with RLS on `document_chunks` (parent-ownership checks)
+- [x] Idempotent re-ingestion (re-upload replaces chunks cleanly)
+- **Stack:** Express + OpenAI `text-embedding-3-small` + Supabase pgvector (HNSW)
 
 ## v3 — PDF Preview Panel
 - Split-pane layout: chat on the left, live PDF preview on the right

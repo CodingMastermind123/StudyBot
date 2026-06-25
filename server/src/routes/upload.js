@@ -6,7 +6,7 @@ const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
   fileFilter(_req, file, cb) {
     if (file.mimetype === "application/pdf") {
       cb(null, true);
@@ -52,7 +52,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 // Multer error handler — must have 4 args for Express to treat it as error middleware
 router.use((err, _req, res, _next) => {
   if (err.code === "LIMIT_FILE_SIZE") {
-    return res.status(413).json({ error: "File exceeds the 25 MB limit." });
+    return res.status(413).json({ error: "File exceeds the 50 MB limit." });
   }
   if (err.code === "INVALID_MIME") {
     return res.status(400).json({ error: err.message });
